@@ -1,0 +1,1533 @@
+
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>하더 센터 운영관리 - HTML 버전</title>
+<style>
+  :root{
+    --bg:#f5f7fb;
+    --panel:#ffffff;
+    --line:#d9e1ec;
+    --line2:#e7edf5;
+    --text:#1f2937;
+    --muted:#6b7280;
+    --primary:#1d4ed8;
+    --primary-soft:#e8f0ff;
+    --success:#0f766e;
+    --warning:#b45309;
+    --danger:#b91c1c;
+    --shadow:0 10px 30px rgba(15, 23, 42, .08);
+    --radius:18px;
+    --radius-sm:12px;
+  }
+  *{box-sizing:border-box}
+  body{
+    margin:0;
+    background:linear-gradient(180deg, #f7f9fd 0%, #eef3f9 100%);
+    color:var(--text);
+    font-family:Inter, Pretendard, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Noto Sans KR", sans-serif;
+  }
+  html, body, .app, .card, .table-wrap{overflow-anchor:none;}
+  .app{max-width:1700px;margin:0 auto;padding:24px}
+  .topbar{
+    display:flex;gap:16px;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;
+    margin-bottom:18px;
+  }
+  .brand{
+    display:flex;flex-direction:column;gap:6px;
+  }
+  .brand h1{margin:0;font-size:28px;letter-spacing:-0.03em}
+  .brand p{margin:0;color:var(--muted)}
+  .pillrow{display:flex;gap:8px;flex-wrap:wrap;margin-top:4px}
+  .pill{
+    background:var(--primary-soft);
+    color:var(--primary);
+    border:1px solid #cfe0ff;
+    border-radius:999px;
+    padding:6px 10px;
+    font-size:12px;
+    font-weight:700;
+  }
+  .actions{
+    display:flex;gap:10px;align-items:center;flex-wrap:wrap
+  }
+  .control{
+    background:var(--panel);
+    border:1px solid var(--line);
+    border-radius:14px;
+    padding:10px 12px;
+    box-shadow:var(--shadow);
+  }
+  .control label{display:block;font-size:12px;color:var(--muted);margin-bottom:6px}
+  .control input,.control select,.control textarea{
+    width:100%;
+    border:1px solid var(--line);
+    border-radius:10px;
+    padding:9px 10px;
+    font:inherit;
+    background:#fff;
+    color:var(--text);
+    outline:none;
+  }
+  .control input:focus,.control select:focus,.control textarea:focus{
+    border-color:#9db7ff; box-shadow:0 0 0 3px rgba(59,130,246,.12)
+  }
+  .tabs{
+    display:flex;gap:8px;flex-wrap:wrap;
+    margin:16px 0;
+  }
+  .tab{
+    border:1px solid var(--line);
+    background:var(--panel);
+    color:var(--text);
+    border-radius:999px;
+    padding:10px 14px;
+    cursor:pointer;
+    box-shadow:0 4px 16px rgba(15,23,42,.04);
+    font-weight:700;
+  }
+  .tab.active{
+    background:var(--primary);
+    color:#fff;
+    border-color:var(--primary);
+  }
+  .card{
+    background:var(--panel);
+    border:1px solid var(--line);
+    border-radius:var(--radius);
+    box-shadow:var(--shadow);
+    padding:18px;
+    margin-bottom:16px;
+  }
+  .kpis{
+    display:grid;
+    grid-template-columns:repeat(6,minmax(0,1fr));
+    gap:12px;
+  }
+  @media (max-width: 1200px){
+    .kpis{grid-template-columns:repeat(3,minmax(0,1fr));}
+  }
+  @media (max-width: 700px){
+    .kpis{grid-template-columns:1fr;}
+  }
+  .kpi{
+    background:linear-gradient(180deg, #fff 0%, #fbfcff 100%);
+    border:1px solid var(--line2);
+    border-radius:16px;
+    padding:16px;
+  }
+  .kpi .label{font-size:12px;color:var(--muted);margin-bottom:6px}
+  .kpi .value{font-size:24px;font-weight:800;letter-spacing:-0.03em}
+  .kpi .sub{font-size:12px;color:var(--muted);margin-top:6px}
+  .sheet{
+    display:none;
+    animation:fade .15s ease-out;
+  }
+  .sheet.active{display:block}
+  @keyframes fade{from{opacity:.6;transform:translateY(2px)}to{opacity:1;transform:translateY(0)}}
+  .section-title{
+    display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;
+    margin-bottom:10px
+  }
+  .section-title h2{margin:0;font-size:20px;letter-spacing:-0.02em}
+  .section-title .note{color:var(--muted);font-size:13px}
+  .table-wrap{
+    overflow:auto;
+    border:1px solid var(--line);
+    border-radius:16px;
+    background:#fff;
+  }
+  table{
+    border-collapse:separate;
+    border-spacing:0;
+    width:100%;
+    min-width:100%;
+  }
+  th, td{
+    border-bottom:1px solid var(--line2);
+    padding:8px 10px;
+    vertical-align:middle;
+    white-space:nowrap;
+  }
+  thead th{
+    position:sticky;
+    top:0;
+    z-index:2;
+    background:#f8fbff;
+    font-size:13px;
+    text-align:left;
+    border-bottom:1px solid var(--line);
+  }
+  tbody tr:hover td{background:#fbfdff}
+  td.input-cell input, td.input-cell select, td.input-cell textarea{
+    width:100%;
+    min-width:110px;
+    border:1px solid #d7e2f0;
+    border-radius:10px;
+    padding:8px 9px;
+    font:inherit;
+    background:#fff;
+  }
+  td.input-cell textarea{min-width:180px;min-height:38px;resize:vertical}
+  td.computed{
+    background:#f8fafc;
+    color:#0f172a;
+    font-weight:700;
+  }
+  td.muted{color:var(--muted)}
+  .small{font-size:12px;color:var(--muted)}
+  .section-grid{
+    display:grid;gap:14px;
+    grid-template-columns:repeat(2,minmax(0,1fr));
+  }
+  @media (max-width: 1100px){
+    .section-grid{grid-template-columns:1fr;}
+  }
+  .subcard{
+    background:#fff;
+    border:1px solid var(--line);
+    border-radius:16px;
+    padding:14px;
+  }
+  .subcard h3{margin:0 0 10px 0;font-size:16px}
+  .btn{
+    border:1px solid var(--line);
+    background:#fff;
+    padding:9px 12px;
+    border-radius:12px;
+    cursor:pointer;
+    font-weight:700;
+  }
+  .btn.primary{
+    background:var(--primary);
+    color:#fff;
+    border-color:var(--primary);
+  }
+  .btn.ghost{
+    background:#fff;
+  }
+  .row-tools{
+    display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:12px
+  }
+  .tag{
+    display:inline-flex;align-items:center;gap:6px;border-radius:999px;padding:5px 10px;
+    font-size:12px;font-weight:700;border:1px solid var(--line);
+  }
+  .tag.success{background:#ecfdf5;color:var(--success);border-color:#a7f3d0}
+  .tag.warning{background:#fffbeb;color:var(--warning);border-color:#fde68a}
+  .tag.danger{background:#fef2f2;color:var(--danger);border-color:#fecaca}
+  .tag.neutral{background:#f8fafc;color:#334155;border-color:#dbe5f1}
+  .notes-list{
+    display:grid;gap:10px;line-height:1.65
+  }
+  .notes-list ul{margin:0;padding-left:18px}
+  .notes-list li{margin:4px 0}
+  .muted-box{
+    background:#f8fbff;border:1px solid #dce8f8;border-radius:14px;padding:12px;color:#475569
+  }
+  .footer-space{height:40px}
+  .right{margin-left:auto}
+  .mini-input{width:110px}
+  .currency{text-align:right}
+  .center{text-align:center}
+  .status-badge{
+    display:inline-block;padding:5px 9px;border-radius:999px;font-size:12px;font-weight:700
+  }
+  .s-이용중{background:#ecfdf5;color:#047857}
+  .s-예정{background:#eff6ff;color:#1d4ed8}
+  .s-만료{background:#fef3c7;color:#92400e}
+  .s-소진{background:#fee2e2;color:#b91c1c}
+  .sheet-controls{
+    display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-top:8px
+  }
+  .sheet-controls .control{box-shadow:none}
+  .sticky-top{
+    position:sticky;top:0;z-index:20;backdrop-filter:blur(10px);
+    background:rgba(245,247,251,.82);padding-bottom:10px;
+  }
+  .nowrap{white-space:nowrap}
+
+  .chart-grid{display:grid;gap:14px;grid-template-columns:repeat(2,minmax(0,1fr));}
+  @media (max-width: 1100px){.chart-grid{grid-template-columns:1fr;}}
+  .chart-card{background:#fff;border:1px solid var(--line);border-radius:16px;padding:14px;}
+  .chart-head{display:flex;justify-content:space-between;gap:12px;align-items:flex-start;flex-wrap:wrap;margin-bottom:10px;}
+  .chart-head h3{margin:0;font-size:16px;}
+  .series-toggles{display:flex;gap:8px;flex-wrap:wrap}
+  .series-toggle{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--line);background:#fff;border-radius:999px;padding:6px 10px;font-size:12px;font-weight:700;cursor:pointer;user-select:none;}
+  .series-toggle input{margin:0}
+  .chart-wrap{position:relative;width:100%;height:300px;border:1px solid var(--line2);border-radius:14px;background:linear-gradient(180deg,#ffffff 0%,#fbfdff 100%);overflow:hidden;}
+  .chart-canvas{width:100%;height:100%;display:block;}
+  .legend-note{font-size:12px;color:var(--muted);}
+  .positive,.signed-positive{color:#dc2626;font-weight:800;}
+  .negative,.signed-negative{color:#2563eb;font-weight:800;}
+
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="sticky-top">
+    <div class="topbar">
+      <div class="brand" style="flex-direction:row;align-items:center;gap:14px;">
+        <img src="data:image/png;base64,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" alt="하더 센터 로고" style="width:64px;height:64px;object-fit:contain;flex:0 0 auto;" />
+        <div style="display:flex;flex-direction:column;gap:4px;">
+          <h1>하더 센터 운영관리</h1>
+        </div>
+      </div>
+      <div class="actions">
+        <div class="control">
+          <label for="yearInput">월간요약 기준연도</label>
+          <input id="yearInput" type="number" min="2000" max="2100" />
+        </div>
+        <div class="control">
+          <label for="todayInfo">기준일</label>
+          <input id="todayInfo" type="text" readonly />
+        </div>
+        <div class="control">
+          <label>데이터 백업</label>
+          <div style="display:flex;gap:8px;flex-wrap:wrap">
+            <button class="btn primary" type="button" onclick="exportBackup()">내보내기</button>
+            <button class="btn" type="button" onclick="document.getElementById('importFile').click()">불러오기</button>
+            <input id="importFile" type="file" accept="application/json,.json" style="display:none" onchange="importBackup(this.files && this.files[0])" />
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="kpis" id="kpiRow"></div>
+    <div class="tabs" id="tabs"></div>
+  </div>
+
+  <div id="sheets"></div>
+  <div class="footer-space"></div>
+</div>
+
+<script>
+const initialState = {"year": 2026, "priceTable": [{"product": "10회권", "total": 10, "price": 300000, "unit": 30000, "days": 90, "refund": "규정에 따라", "note": "예시"}, {"product": "20회권", "total": 20, "price": 560000, "unit": 28000, "days": 150, "refund": "규정에 따라", "note": "예시"}, {"product": "30회권", "total": 30, "price": 780000, "unit": 26000, "days": 210, "refund": "규정에 따라", "note": "예시"}], "paymentMethods": ["현금", "계좌이체", "카드", "간편결제", "기타"], "expenseCategories": ["임대료", "관리비", "인건비", "광고비", "소모품비", "수선비", "전기/수도/가스", "세금/수수료", "기타"], "incomeTypes": ["회원권", "개인레슨", "이벤트", "환불", "기타"], "members": [{"name": "김하늘", "phone": "010-1000-0001", "start": "2026-01-05", "end": "2026-04-04", "product": "10회권", "total": 10, "used": 10, "coach": "강사A", "regType": "신규"}], "expenses": [{"date": "2026-01-01", "category": "임대료", "item": "임대료", "amount": 1100000, "method": "계좌이체", "note": "월세"}], "manualIncomes": [{"date": "2026-01-15", "item": "개인레슨", "amount": 50000, "method": "현금", "coach": "강사A", "type": "개인레슨", "note": "예시"}], "instructorOptions": ["강사A", "강사B", "강사C"], "memberTypes": ["신규", "재등록"], "selectedCoachChart": "강사A"};
+
+const STORAGE_KEY = 'hader_center_management_state_v1';
+
+function normalizeState(raw){
+  const base = JSON.parse(JSON.stringify(initialState));
+  if (!raw || typeof raw !== 'object') return base;
+  for (const key of Object.keys(base)){
+    if (Array.isArray(base[key])) {
+      if (Array.isArray(raw[key])) base[key] = JSON.parse(JSON.stringify(raw[key]));
+    } else if (raw[key] !== undefined) {
+      base[key] = raw[key];
+    }
+  }
+  return base;
+}
+function loadSavedState(){
+  try{
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (!raw) return JSON.parse(JSON.stringify(initialState));
+    return normalizeState(JSON.parse(raw));
+  }catch(e){
+    return JSON.parse(JSON.stringify(initialState));
+  }
+}
+function saveState(){
+  try{
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+  }catch(e){}
+}
+function exportBackup(){
+  try{
+    const payload = JSON.stringify(state, null, 2);
+    const blob = new Blob([payload], {type:'application/json;charset=utf-8'});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    const ts = new Date();
+    const stamp = `${ts.getFullYear()}-${pad(ts.getMonth()+1,2)}-${pad(ts.getDate(),2)}_${pad(ts.getHours(),2)}${pad(ts.getMinutes(),2)}`;
+    a.href = url;
+    a.download = `하더센터_운영관리_백업_${stamp}.json`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+  }catch(e){
+    alert('내보내기에 실패했습니다.');
+  }
+}
+function importBackup(file){
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = () => {
+    try{
+      const parsed = JSON.parse(String(reader.result || '{}'));
+      state = normalizeState(parsed);
+      saveState();
+      scheduleRecalc();
+      const input = document.getElementById('importFile');
+      if (input) input.value = '';
+      alert('데이터를 불러왔습니다.');
+    }catch(e){
+      alert('JSON 파일을 읽지 못했습니다.');
+    }
+  };
+  reader.readAsText(file, 'utf-8');
+}
+
+let state = loadSavedState();
+let pendingFocus = null;
+let isComposing = false;
+let recalcTimer = 0;
+let pendingDuringComposition = false;
+
+function scheduleRecalc(force = false, delay = 650){
+  if (isComposing && !force) {
+    pendingDuringComposition = true;
+    return;
+  }
+  pendingDuringComposition = false;
+  if (recalcTimer) clearTimeout(recalcTimer);
+  recalcTimer = setTimeout(() => {
+    recalcTimer = 0;
+    recalc();
+  }, force ? 0 : delay);
+}
+
+if (typeof document !== 'undefined') {
+  document.addEventListener('compositionstart', (e) => {
+    if (e.target && ['INPUT','TEXTAREA'].includes(e.target.tagName)) isComposing = true;
+  }, true);
+  document.addEventListener('compositionend', (e) => {
+    if (e.target && ['INPUT','TEXTAREA'].includes(e.target.tagName)) {
+      isComposing = false;
+      if (pendingDuringComposition) scheduleRecalc(true);
+    }
+  }, true);
+}
+
+function pad(n, len){
+  return String(n).padStart(len, '0');
+}
+function escapeHtml(v){
+  return String(v ?? '')
+    .replace(/&/g,'&amp;')
+    .replace(/</g,'&lt;')
+    .replace(/>/g,'&gt;')
+    .replace(/"/g,'&quot;')
+    .replace(/'/g,'&#39;');
+}
+function fmtNumber(v){
+  const n = Number(v);
+  if (!isFinite(n) || v === '' || v === null || v === undefined) return '';
+  return new Intl.NumberFormat('ko-KR').format(Math.round(n));
+}
+function fmtPct(v){
+  const n = Number(v);
+  if (!isFinite(n) || v === '' || v === null || v === undefined) return '';
+  return (n * 100).toFixed(1) + '%';
+}
+function signClass(v){
+  const n = Number(v);
+  if (!isFinite(n) || n === 0) return '';
+  return n > 0 ? 'signed-positive' : 'signed-negative';
+}
+function signedNumberHtml(v){
+  const n = Number(v);
+  if (!isFinite(n) || v === '' || v === null || v === undefined) return '';
+  const cls = signClass(n);
+  const txt = fmtNumber(n);
+  return cls ? `<span class="${cls}">${txt}</span>` : txt;
+}
+function signedPctHtml(v){
+  const n = Number(v);
+  if (!isFinite(n) || v === '' || v === null || v === undefined) return '';
+  const cls = signClass(n);
+  const txt = fmtPct(n);
+  return cls ? `<span class="${cls}">${txt}</span>` : txt;
+}
+function plainNumberHtml(v){
+  return fmtNumber(v);
+}
+function plainPctHtml(v){
+  return fmtPct(v);
+}
+function parseDate(v){
+  if (!v) return null;
+  if (v instanceof Date && !isNaN(v)) return v;
+  const s = String(v).trim();
+  if (!s) return null;
+  const d = new Date(s.includes('T') ? s : s + 'T00:00:00');
+  return isNaN(d) ? null : d;
+}
+function fmtDate(v){
+  const d = parseDate(v);
+  if (!d) return '';
+  const y = d.getFullYear();
+  const m = pad(d.getMonth()+1,2);
+  const da = pad(d.getDate(),2);
+  return `${y}-${m}-${da}`;
+}
+function monthLabel(y,m0){
+  return `${y}.${pad(m0+1,2)}`;
+}
+function todayDate(){
+  const d = new Date();
+  d.setHours(0,0,0,0);
+  return d;
+}
+function captureUiState(){
+  const active = document.activeElement;
+  const focus = active && ['INPUT','TEXTAREA','SELECT'].includes(active.tagName) ? {
+    oninput: active.getAttribute('oninput') || '',
+    tagName: active.tagName,
+    type: active.type || '',
+    selectionStart: typeof active.selectionStart === 'number' ? active.selectionStart : null,
+    selectionEnd: typeof active.selectionEnd === 'number' ? active.selectionEnd : null,
+  } : null;
+  const wraps = [...document.querySelectorAll('.table-wrap')].map(el => ({top: el.scrollTop, left: el.scrollLeft}));
+  return { focus, wraps, windowY: window.scrollY || 0 };
+}
+function restoreUiState(snapshot){
+  const wraps = [...document.querySelectorAll('.table-wrap')];
+  wraps.forEach((el, idx) => {
+    const pos = snapshot.wraps[idx];
+    if (!pos) return;
+    el.scrollTop = pos.top;
+    el.scrollLeft = pos.left;
+  });
+  const targetSpec = pendingFocus || snapshot.focus;
+  pendingFocus = null;
+  if (targetSpec && targetSpec.oninput){
+    const target = [...document.querySelectorAll('input,select,textarea')].find(el => el.getAttribute('oninput') === targetSpec.oninput);
+    if (target){
+      try { target.focus({preventScroll:true}); } catch(e) { target.focus(); }
+      if (targetSpec.selectionStart !== null && typeof target.setSelectionRange === 'function' && target.tagName === 'INPUT' && ['text','search','url','tel','password','email','number'].includes(target.type)) {
+        try { target.setSelectionRange(targetSpec.selectionStart, targetSpec.selectionEnd ?? targetSpec.selectionStart); } catch(e) {}
+      } else if (targetSpec.selectionStart !== null && typeof target.setSelectionRange === 'function' && target.tagName === 'TEXTAREA') {
+        try { target.setSelectionRange(targetSpec.selectionStart, targetSpec.selectionEnd ?? targetSpec.selectionStart); } catch(e) {}
+      }
+    }
+  }
+}
+function monthStart(y,m0){
+  return new Date(y, m0, 1);
+}
+function nextMonthStart(y,m0){
+  return new Date(y, m0+1, 1);
+}
+function addDays(dateObj, days){
+  const d = new Date(dateObj.getTime());
+  d.setDate(d.getDate() + days);
+  return d;
+}
+function memberValidityDays(m){
+  const row = getPrice(m.product);
+  return row ? Number(row.days) || 0 : 0;
+}
+function memberValidityEnd(m){
+  const s = parseDate(m.start);
+  const days = memberValidityDays(m);
+  if (!s || !days) return '';
+  const end = addDays(s, days - 1);
+  return fmtDate(end);
+}
+function syncMemberValidityAll(){
+  state.members.forEach(m => {
+    const end = memberValidityEnd(m);
+    m.end = end;
+  });
+}
+function getPrice(product){
+  return state.priceTable.find(p => p.product === product) || null;
+}
+function unique(list){
+  return [...new Set(list.filter(Boolean))];
+}
+function memberDerived(m, idx){
+  const total = Number(m.total) || 0;
+  const used = Number(m.used) || 0;
+  const remain = Math.max(0, total - used);
+  const priceRow = getPrice(m.product);
+  const price = priceRow ? Number(priceRow.price) || 0 : 0;
+  const unit = total > 0 ? price / total : 0;
+  let status = '';
+  const name = (m.name || '').trim();
+  const s = parseDate(m.start);
+  const e = parseDate(memberValidityEnd(m));
+  const t = todayDate();
+  if (name) {
+    if (s && t < s) status = '예정';
+    else if (used >= total && total > 0) status = '소진';
+    else if (e && t > e) status = '만료';
+    else status = '이용중';
+  }
+  return {
+    id: name ? `M${pad(idx+1,4)}` : '',
+    remain,
+    unit,
+    status,
+    end: memberValidityEnd(m),
+  };
+}
+function monthRange(year, monthIndex){
+  const start = monthStart(year, monthIndex);
+  const end = nextMonthStart(year, monthIndex);
+  return { start, end };
+}
+function inRange(dateValue, start, end){
+  const d = parseDate(dateValue);
+  if (!d) return false;
+  return d >= start && d < end;
+}
+function memberIncomeRows(){
+  return state.members.map((m, idx) => {
+    const d = memberDerived(m, idx);
+    const priceRow = getPrice(m.product);
+    const price = priceRow ? Number(priceRow.price) || 0 : 0;
+    const received = price;
+    return {
+      date: fmtDate(m.start),
+      name: m.name || '',
+      id: d.id,
+      product: m.product || '',
+      price,
+      discount: 0,
+      received,
+      method: '',
+      coach: m.coach || '',
+      type: '회원권',
+      note: m.regType || '',
+    };
+  });
+}
+function extraIncomeRows(){
+  return state.manualIncomes.map(row => ({
+    date: row.date || '',
+    item: row.item || '',
+    amount: Number(row.amount) || 0,
+    method: row.method || '',
+    coach: row.coach || '',
+    type: row.type || '기타',
+    note: row.note || '',
+  })).filter(r => r.date || r.item || r.amount || r.method || r.coach || r.type || r.note);
+}
+function revenueSummaryForMonth(year, monthIndex){
+  const { start, end } = monthRange(year, monthIndex);
+  const memberRevenue = memberIncomeRows().reduce((sum, r) => sum + (inRange(r.date, start, end) ? (Number(r.received)||0) : 0), 0);
+  const otherRevenue = extraIncomeRows().reduce((sum, r) => sum + (inRange(r.date, start, end) ? (Number(r.amount)||0) : 0), 0);
+  return { memberRevenue, otherRevenue, totalRevenue: memberRevenue + otherRevenue };
+}
+function expenseSummaryForMonth(year, monthIndex){
+  const { start, end } = monthRange(year, monthIndex);
+  const cats = ['임대료','관리비','인건비','광고비','소모품비','기타'];
+  const out = Object.fromEntries(cats.map(c => [c, 0]));
+  state.expenses.forEach(r => {
+    if (!inRange(r.date, start, end)) return;
+    const amt = Number(r.amount) || 0;
+    if (cats.includes(r.category)) out[r.category] += amt;
+    else out['기타'] += amt;
+  });
+  const totalExpense = Object.values(out).reduce((a,b)=>a+b,0);
+  return {...out, totalExpense};
+}
+function annualSummary(){
+  const y = Number(state.year) || new Date().getFullYear();
+  const months = Array.from({length:12}, (_,i) => {
+    const rev = revenueSummaryForMonth(y,i);
+    const exp = expenseSummaryForMonth(y,i);
+    const profit = rev.totalRevenue - exp.totalExpense;
+    const margin = rev.totalRevenue ? profit / rev.totalRevenue : 0;
+    return {rev, exp, profit, margin};
+  });
+  return months;
+}
+function totalMemberCount(){
+  return state.members.filter(m => (m.name||'').trim()).length;
+}
+function activeMemberCount(){
+  return state.members.filter((m, idx) => memberDerived(m, idx).status === '이용중').length;
+}
+function expiredMemberCount(){
+  return state.members.filter((m, idx) => memberDerived(m, idx).status === '만료').length;
+}
+function soldOutMemberCount(){
+  return state.members.filter((m, idx) => memberDerived(m, idx).status === '소진').length;
+}
+function revenueYTD(){
+  const y = Number(state.year) || new Date().getFullYear();
+  const months = annualSummary();
+  return months.reduce((a,m)=>a + m.rev.totalRevenue, 0);
+}
+function expenseYTD(){
+  const months = annualSummary();
+  return months.reduce((a,m)=>a + m.exp.totalExpense, 0);
+}
+function profitYTD(){
+  return revenueYTD() - expenseYTD();
+}
+function marginYTD(){
+  const rev = revenueYTD();
+  return rev ? profitYTD() / rev : 0;
+}
+
+
+function memberRegistrationType(m, idx){
+  const explicit = (m.regType || '').trim();
+  if (explicit) return explicit;
+  const name = (m.name || '').trim();
+  const phone = (m.phone || '').trim();
+  if (!name && !phone) return '';
+  for (let i = 0; i < idx; i++){
+    const prev = state.members[i] || {};
+    const prevName = (prev.name || '').trim();
+    const prevPhone = (prev.phone || '').trim();
+    if ((name && prevName && name === prevName) || (phone && prevPhone && phone === prevPhone)){
+      return '재등록';
+    }
+  }
+  return '신규';
+}
+function memberRegistrationStats(){
+  const rows = state.members.filter(m => (m.name || '').trim() || (m.phone || '').trim());
+  const newCount = rows.filter((m, idx) => memberRegistrationType(m, state.members.indexOf(m)) === '신규').length;
+  const reCount = rows.filter((m, idx) => memberRegistrationType(m, state.members.indexOf(m)) === '재등록').length;
+  const total = newCount + reCount;
+  return { newCount, reCount, total, rate: total ? reCount / total : 0 };
+}
+function coachRegistrationStats(coach){
+  const rows = state.members.filter(m => (m.name || '').trim() && (m.coach || '').trim() === coach);
+  const newCount = rows.filter((m, idx) => memberRegistrationType(m, state.members.indexOf(m)) === '신규').length;
+  const reCount = rows.filter((m, idx) => memberRegistrationType(m, state.members.indexOf(m)) === '재등록').length;
+  const total = newCount + reCount;
+  return { newCount, reCount, total, rate: total ? reCount / total : 0 };
+}
+function coachOptions(){
+  const base = (state.instructorOptions || []).map(v => (v || '').trim()).filter(Boolean);
+  const fromMembers = memberIncomeRows().map(r => (r.coach || '').trim()).filter(Boolean);
+  const fromManual = extraIncomeRows().map(r => (r.coach || '').trim()).filter(Boolean);
+  return [...new Set(base.concat(fromMembers, fromManual))];
+}
+function coachRevenueByMonth(year, coach){
+  const { start, end } = monthRange(year, 0); // placeholder for lint-like environments
+  return Array.from({length: 12}, (_, monthIndex) => {
+    const range = monthRange(year, monthIndex);
+    const memberRevenue = memberIncomeRows().reduce((sum, r) => sum + (r.coach === coach && inRange(r.date, range.start, range.end) ? (Number(r.received) || 0) : 0), 0);
+    const manualRevenue = extraIncomeRows().reduce((sum, r) => sum + (r.coach === coach && inRange(r.date, range.start, range.end) ? (Number(r.amount) || 0) : 0), 0);
+    return memberRevenue + manualRevenue;
+  });
+}
+function selectedCoach(){
+  const options = coachOptions();
+  const current = (state.selectedCoachChart || '').trim();
+  if (current && options.includes(current)) return current;
+  return options[0] || '';
+}
+function updateSelectedCoachChart(value){
+  state.selectedCoachChart = value;
+  scheduleRecalc(false, 250);
+}
+function updateYear(v){
+  const n = parseInt(v,10);
+  if (!isNaN(n)) state.year = n;
+  scheduleRecalc(true);
+}
+function updateCode(col, idx, value){
+  const keyMap = {0:'paymentMethods', 1:'expenseCategories', 2:'incomeTypes', 3:'memberTypes'};
+  const key = keyMap[col];
+  if (!key) return;
+  state[key][idx] = value;
+  scheduleRecalc(false, 900);
+}
+function updateCoachOption(idx, value){
+  if (!state.instructorOptions[idx] && value === '') return;
+  state.instructorOptions[idx] = value;
+  if ((state.selectedCoachChart || '') && !coachOptions().includes(state.selectedCoachChart)) {
+    state.selectedCoachChart = coachOptions()[0] || '';
+  }
+  scheduleRecalc(false, 900);
+}
+function updatePrice(idx, field, value){
+  const row = state.priceTable[idx];
+  if (!row) return;
+  row[field] = (field === 'price' || field === 'total' || field === 'unit' || field === 'days') ? (value === '' ? '' : Number(value)) : value;
+  syncMemberValidityAll();
+  const delay = ['product','refund','note'].includes(field) ? 3000 : 200;
+  scheduleRecalc(false, delay);
+}
+function updateMember(idx, field, value){
+  const row = state.members[idx];
+  if (!row) return;
+  if (['total','used','payment'].includes(field)) row[field] = value === '' ? '' : Number(value);
+  else row[field] = value;
+  if (['start','product'].includes(field)) syncMemberValidityAll();
+  const delay = ['name','phone'].includes(field) ? 3000 : 180;
+  scheduleRecalc(false, delay);
+}
+function updateExpense(idx, field, value){
+  const row = state.expenses[idx];
+  if (!row) return;
+  row[field] = (field === 'amount') ? (value === '' ? '' : Number(value)) : value;
+  const delay = ['item','note'].includes(field) ? 3000 : 180;
+  scheduleRecalc(false, delay);
+}
+function updateManualIncome(idx, field, value){
+  const row = state.manualIncomes[idx];
+  if (!row) return;
+  row[field] = (field === 'amount') ? (value === '' ? '' : Number(value)) : value;
+  const delay = ['item','note'].includes(field) ? 3000 : 180;
+  scheduleRecalc(false, delay);
+}
+function addRow(kind){
+  if (kind === 'member'){
+    state.members.push({name:'',phone:'',regType:'신규',start:'',end:'',product:state.priceTable[0]?.product || '',total:'',used:'',coach:state.instructorOptions[0]||state.selectedCoachChart||''});
+    const idx = state.members.length - 1;
+    pendingFocus = { oninput: `updateMember(${idx}, 'name', this.value)`, selectionStart: 0, selectionEnd: 0 };
+  } else if (kind === 'expense'){
+    state.expenses.push({date:'',category:state.expenseCategories[0]||'기타',item:'',amount:'',method:state.paymentMethods[0]||'',note:''});
+    const idx = state.expenses.length - 1;
+    pendingFocus = { oninput: `updateExpense(${idx}, 'date', this.value)`, selectionStart: 0, selectionEnd: 0 };
+  } else if (kind === 'manualIncome'){
+    state.manualIncomes.push({date:'',item:'',amount:'',method:state.paymentMethods[0]||'',coach:'',type:state.incomeTypes[0]||'기타',note:''});
+    const idx = state.manualIncomes.length - 1;
+    pendingFocus = { oninput: `updateManualIncome(${idx}, 'date', this.value)`, selectionStart: 0, selectionEnd: 0 };
+  } else if (kind === 'price'){
+    state.priceTable.push({product:'',total:'',price:'',unit:'',days:'',refund:'',note:''});
+    const idx = state.priceTable.length - 1;
+    pendingFocus = { oninput: `updatePrice(${idx}, 'product', this.value)`, selectionStart: 0, selectionEnd: 0 };
+  } else if (kind === 'codeCommon'){
+    state.paymentMethods.push('');
+    state.expenseCategories.push('');
+    state.incomeTypes.push('');
+    state.memberTypes.push('');
+    const idx = state.paymentMethods.length - 1;
+    pendingFocus = { oninput: `updateCode(0, ${idx}, this.value)`, selectionStart: 0, selectionEnd: 0 };
+  } else if (kind === 'coachOption'){
+    state.instructorOptions.push('');
+    const idx = state.instructorOptions.length - 1;
+    pendingFocus = { oninput: `updateCoachOption(${idx}, this.value)`, selectionStart: 0, selectionEnd: 0 };
+  }
+  scheduleRecalc(true);
+}
+function removeRow(kind, idx){
+  if (kind === 'member') state.members.splice(idx,1);
+  else if (kind === 'expense') state.expenses.splice(idx,1);
+  else if (kind === 'manualIncome') state.manualIncomes.splice(idx,1);
+  else if (kind === 'price') state.priceTable.splice(idx,1);
+  else if (kind === 'codeCommon') {
+    state.paymentMethods.splice(idx,1);
+    state.expenseCategories.splice(idx,1);
+    state.incomeTypes.splice(idx,1);
+    state.memberTypes.splice(idx,1);
+  }
+  else if (kind === 'coachOption') state.instructorOptions.splice(idx,1);
+  scheduleRecalc(true);
+}
+
+function renderTabs(){
+  const tabs = [
+    ['overview','홈'],
+    ['codes','코드값'],
+    ['prices','회원권_가격표'],
+    ['members','회원등록'],
+    ['income','수입기록'],
+    ['expenses','지출관리'],
+    ['sales','횟수권별매출'],
+    ['monthly','월간요약'],
+  ];
+  return tabs.map(([id, label]) => `<button class="tab ${activeTab===id?'active':''}" onclick="setTab('${id}')">${label}</button>`).join('');
+}
+function setTab(id){
+  activeTab = id;
+  document.querySelectorAll('.sheet').forEach(el => el.classList.toggle('active', el.dataset.sheet === id));
+  document.querySelectorAll('.tab').forEach(btn => btn.classList.remove('active'));
+  const btn = [...document.querySelectorAll('.tab')].find(b => b.textContent === sheetLabels[id]);
+  if (btn) btn.classList.add('active');
+}
+const sheetLabels = {
+  overview:'홈', codes:'코드값', prices:'회원권_가격표', members:'회원등록',
+  income:'수입기록', expenses:'지출관리', sales:'횟수권별매출', monthly:'월간요약'
+};
+let activeTab = 'overview';
+
+const chartSeries = {
+  amount: [
+    { key:'memberRevenue', label:'회원권매출', color:'#1d4ed8', enabled:true },
+    { key:'otherRevenue', label:'기타수입', color:'#0f766e', enabled:true },
+    { key:'totalRevenue', label:'총매출', color:'#0b5fff', enabled:true },
+    { key:'totalExpense', label:'총지출', color:'#b45309', enabled:false },
+    { key:'profit', label:'영업이익', color:'#7c3aed', enabled:false },
+    { key:'임대료', label:'임대료', color:'#ef4444', enabled:false },
+    { key:'관리비', label:'관리비', color:'#f59e0b', enabled:false },
+    { key:'인건비', label:'인건비', color:'#06b6d4', enabled:false },
+    { key:'광고비', label:'광고비', color:'#84cc16', enabled:false },
+    { key:'소모품비', label:'소모품비', color:'#ec4899', enabled:false },
+    { key:'기타', label:'기타지출', color:'#64748b', enabled:false },
+  ],
+  margin: [
+    { key:'margin', label:'마진율', color:'#1d4ed8', enabled:true },
+  ]
+};
+function getSeriesValue(m, key){
+  if (key === 'memberRevenue') return m.rev.memberRevenue;
+  if (key === 'otherRevenue') return m.rev.otherRevenue;
+  if (key === 'totalRevenue') return m.rev.totalRevenue;
+  if (key === 'totalExpense') return m.exp.totalExpense;
+  if (key === 'profit') return m.profit;
+  if (key === 'margin') return m.margin * 100;
+  return m.exp[key] || 0;
+}
+function toggleSeries(kind, key){
+  const s = chartSeries[kind].find(x => x.key === key);
+  if (!s) return;
+  s.enabled = !s.enabled;
+  renderCharts();
+}
+function buildToggles(kind, containerId){
+  const el = document.getElementById(containerId);
+  if (!el) return;
+  el.innerHTML = chartSeries[kind].map(s => `
+    <label class="series-toggle"><input type="checkbox" ${s.enabled ? 'checked' : ''} onchange="toggleSeries('${kind}','${s.key}')">${escapeHtml(s.label)}</label>
+  `).join('');
+}
+function drawChart(canvas, series, labels, kind){
+  if (!canvas) return;
+  const dpr = window.devicePixelRatio || 1;
+  const rect = canvas.getBoundingClientRect();
+  canvas.width = Math.max(1, Math.floor(rect.width * dpr));
+  canvas.height = Math.max(1, Math.floor(rect.height * dpr));
+  const ctx = canvas.getContext('2d');
+  ctx.setTransform(dpr,0,0,dpr,0,0);
+  const w = rect.width, h = rect.height;
+  ctx.clearRect(0,0,w,h);
+  ctx.fillStyle = '#ffffff';
+  ctx.fillRect(0,0,w,h);
+  const pad = {l:48,r:18,t:18,b:34};
+  const plotW = w - pad.l - pad.r;
+  const plotH = h - pad.t - pad.b;
+  const active = series.filter(s => s.enabled);
+  if (!active.length){
+    ctx.fillStyle = '#64748b';
+    ctx.font = '14px sans-serif';
+    ctx.fillText('표시할 항목을 선택하세요.', 20, 30);
+    return;
+  }
+  const values = [];
+  active.forEach(s => s.data.forEach(v => values.push(v)));
+  let min = Math.min(...values);
+  let max = Math.max(...values);
+  if (kind === 'margin') {
+    min = Math.min(min, -5);
+    max = Math.max(max, 5);
+  }
+  if (min === max) { min -= 1; max += 1; }
+  const range = max - min;
+  const zeroY = pad.t + plotH - ((0 - min) / range) * plotH;
+  // grid
+  ctx.strokeStyle = '#e5e7eb';
+  ctx.lineWidth = 1;
+  for (let i=0;i<5;i++){
+    const y = pad.t + (plotH * i / 4);
+    ctx.beginPath(); ctx.moveTo(pad.l, y); ctx.lineTo(w-pad.r, y); ctx.stroke();
+    const val = max - (range * i / 4);
+    ctx.fillStyle = '#6b7280'; ctx.font = '11px sans-serif';
+    ctx.textAlign = 'right'; ctx.textBaseline = 'middle';
+    ctx.fillText(kind === 'margin' ? `${val.toFixed(1)}%` : fmtNumber(val), pad.l - 8, y);
+  }
+  // zero line
+  if (min < 0 && max > 0){
+    ctx.strokeStyle = '#cbd5e1';
+    ctx.beginPath(); ctx.moveTo(pad.l, zeroY); ctx.lineTo(w-pad.r, zeroY); ctx.stroke();
+  }
+  // x labels
+  ctx.fillStyle = '#6b7280'; ctx.font = '11px sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'top';
+  labels.forEach((lab, i) => {
+    const x = pad.l + (plotW * (labels.length === 1 ? 0 : i / (labels.length - 1)));
+    ctx.fillText(lab.slice(5), x, h - pad.b + 8);
+  });
+  active.forEach(s => {
+    const pts = s.data.map((v,i) => ({
+      x: pad.l + (plotW * (labels.length === 1 ? 0 : i / (labels.length - 1))),
+      y: pad.t + plotH - ((v - min) / range) * plotH
+    }));
+    ctx.strokeStyle = s.color;
+    ctx.lineWidth = 2.5;
+    ctx.beginPath();
+    pts.forEach((p, idx) => { if (!idx) ctx.moveTo(p.x, p.y); else ctx.lineTo(p.x, p.y); });
+    ctx.stroke();
+    pts.forEach(p => { ctx.fillStyle = s.color; ctx.beginPath(); ctx.arc(p.x, p.y, 3.5, 0, Math.PI*2); ctx.fill(); });
+  });
+}
+function renderCharts(){
+  const y = Number(state.year) || new Date().getFullYear();
+  const months = annualSummary();
+  const labels = Array.from({length:12}, (_,i) => monthLabel(y,i));
+  const amountTargets = [
+    { prefix:'overview', amountId:'overviewAmountToggles', canvasId:'overviewAmountChart' },
+    { prefix:'monthly', amountId:'amountToggles', canvasId:'amountChart' },
+  ];
+  amountTargets.forEach(t => {
+    const amountSeries = chartSeries.amount.map(s => ({
+      ...s,
+      data: months.map((m,i) => getSeriesValue(m, s.key))
+    }));
+    buildToggles('amount', t.amountId);
+    drawChart(document.getElementById(t.canvasId), amountSeries, labels, 'amount');
+  });
+  const marginSeries = chartSeries.margin.map(s => ({
+    ...s,
+    data: months.map((m,i) => getSeriesValue(m, s.key))
+  }));
+  buildToggles('margin', 'marginToggles');
+  drawChart(document.getElementById('marginChart'), marginSeries, labels, 'margin');
+  const selected = selectedCoach();
+  const coachAmountSeries = selected ? [
+    {
+      key:'totalRevenue',
+      label:'총매출',
+      color:'#1d4ed8',
+      enabled:true,
+      data: months.map(m => m.rev.totalRevenue)
+    },
+    {
+      key:'coachRevenue',
+      label:`${selected} 매출`,
+      color:'#7c3aed',
+      enabled:true,
+      data: coachMonthlySeries(y, selected)
+    },
+  ] : [{
+    key:'totalRevenue',
+    label:'총매출',
+    color:'#1d4ed8',
+    enabled:true,
+    data: months.map(m => m.rev.totalRevenue)
+  }];
+  drawChart(document.getElementById('overviewCoachChart'), coachAmountSeries, labels, 'amount');
+  drawChart(document.getElementById('monthlyCoachChart'), coachAmountSeries, labels, 'amount');
+}
+
+
+function codeValueList(kind, current){
+  const list = {
+    payment: [...new Set((state.paymentMethods || []).filter(Boolean).concat([current||'']))],
+    expense: [...new Set((state.expenseCategories || []).filter(Boolean).concat([current||'']))],
+    income: [...new Set((state.incomeTypes || []).filter(Boolean).concat([current||'']))],
+    memberType: [...new Set((state.memberTypes || []).filter(Boolean).concat([current||'']))],
+    product: [...new Set(state.priceTable.map(x=>x.product).filter(Boolean).concat([current||'']))],
+    coach: [...new Set((state.instructorOptions || []).filter(Boolean).concat([current||'']))],
+  }[kind].filter(Boolean);
+  return [...new Set(list)];
+}
+function selectHtml(kind, current, onChange, extraClass=''){
+  const options = codeValueList(kind, current);
+  const emptyOption = `<option value=""></option>`;
+  return `<select class="${extraClass}" onchange="${onChange}">
+    ${emptyOption}
+    ${options.map(v => `<option value="${escapeHtml(v)}" ${String(v)===String(current)?'selected':''}>${escapeHtml(v)}</option>`).join('')}
+  </select>`;
+}
+function inputHtml(value, oninput, type='text', cls='', step=''){
+  const v = value === null || value === undefined ? '' : value;
+  const stepAttr = step ? ` step="${step}"` : '';
+  return `<input class="${cls}" type="${type}" value="${escapeHtml(v)}" oninput="${oninput}"${stepAttr} />`;
+}
+function dateHtml(value, oninput){
+  return inputHtml(fmtDate(value), oninput, 'date');
+}
+function coachMonthlySeries(year, coach){
+  return Array.from({length:12}, (_, monthIndex) => {
+    const range = monthRange(year, monthIndex);
+    const memberRevenue = memberIncomeRows().reduce((sum, r) => sum + (r.coach === coach && inRange(r.date, range.start, range.end) ? (Number(r.received) || 0) : 0), 0);
+    const manualRevenue = extraIncomeRows().reduce((sum, r) => sum + (r.coach === coach && inRange(r.date, range.start, range.end) ? (Number(r.amount) || 0) : 0), 0);
+    return memberRevenue + manualRevenue;
+  });
+}
+function renderSummaryCharts(source='overview'){
+  const y = Number(state.year) || new Date().getFullYear();
+  const months = annualSummary();
+  const labels = Array.from({length:12}, (_,i) => monthLabel(y,i));
+  const selected = selectedCoach();
+  const selectedStats = selected ? coachRegistrationStats(selected) : null;
+  const coachSeries = selected ? [{
+    key:'totalRevenue',
+    label:'총매출',
+    color:'#1d4ed8',
+    enabled:true,
+    data: months.map(m => m.rev.totalRevenue)
+  },{
+    key:'coachRevenue',
+    label:`${selected} 매출`,
+    color:'#7c3aed',
+    enabled:true,
+    data: coachMonthlySeries(y, selected)
+  }] : [{
+    key:'totalRevenue',
+    label:'총매출',
+    color:'#1d4ed8',
+    enabled:true,
+    data: months.map(m => m.rev.totalRevenue)
+  }];
+  const coachChips = coachOptions().map(c => {
+    const s = coachRegistrationStats(c);
+    return `<span class="chart-chip">${escapeHtml(c)} 재등록율 ${plainPctHtml(s.rate)} (${fmtNumber(s.reCount)}/${fmtNumber(s.total)})</span>`;
+  }).join('');
+  return `
+    <div class="card" style="margin-top:14px;">
+      <div class="section-title">
+        <div>
+          <h2>요약</h2>
+          <div class="note">월간 요약의 핵심 그래프를 홈에서 바로 볼 수 있습니다.</div>
+        </div>
+      </div>
+      <div class="chart-grid">
+        <div class="chart-card">
+          <div class="chart-head">
+            <div>
+              <h3>전체 금액 변화 그래프</h3>
+              <div class="legend-note">매출, 지출, 영업이익, 주요 항목을 월별로 확인합니다.</div>
+            </div>
+            <div class="series-toggles" id="${source}AmountToggles"></div>
+          </div>
+          <div class="chart-wrap"><canvas id="${source}AmountChart" class="chart-canvas"></canvas></div>
+        </div>
+        <div class="chart-card">
+          <div class="chart-head">
+            <div>
+              <h3>담당 강사별 매출 그래프</h3>
+              <div class="legend-note">전체 매출과 선택한 강사의 월별 매출, 재등록율을 함께 확인합니다.</div>
+              <div class="chart-stats">
+                <span class="chart-chip">선택 강사 재등록율 ${selectedStats ? plainPctHtml(selectedStats.rate) : '0.0%'}${selectedStats ? ` (${fmtNumber(selectedStats.reCount)}/${fmtNumber(selectedStats.total)})` : ''}</span>
+                ${coachChips}
+              </div>
+            </div>
+            <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+              <div class="control" style="box-shadow:none;padding:8px 10px;">
+                <label style="margin-bottom:4px;">강사 선택</label>
+                ${selectHtml('coach', selected, `updateSelectedCoachChart(this.value)`)}
+              </div>
+            </div>
+          </div>
+          <div class="chart-wrap"><canvas id="${source}CoachChart" class="chart-canvas"></canvas></div>
+        </div>
+      </div>
+    </div>
+  `;
+}
+function renderOverview(){
+  const items = [
+    '1) 회원권_가격표에서 판매 중인 횟수권과 금액, 유효기간을 먼저 입력합니다.',
+    '2) 회원등록 시트에 회원 정보를 입력하면 총횟수, 잔여횟수, 상태가 자동 계산됩니다.',
+    '3) 회원구분을 신규/재등록으로 표시하면 재등록율도 함께 확인할 수 있습니다.',
+    '4) 수입기록 시트는 회원등록 시작일을 기준으로 자동 반영되며, 개별 수입은 별도 입력으로 추가할 수 있습니다.',
+    '5) 지출관리 시트에 임대료, 관리비, 인건비, 광고비, 소모품비 등을 입력합니다.',
+    '6) 홈 하단의 요약 그래프에서 전체 매출과 담당 강사별 매출을 바로 확인합니다.'
+  ];
+  const tips = [
+    '횟수권 상품명은 회원등록과 수입기록에서 동일하게 사용하세요.',
+    '월별 집계는 결제일/지출일 기준으로 자동 계산됩니다.',
+    '상태가 만료인 회원은 연장 안내, 소진인 회원은 재등록 대상입니다.',
+    '코드값을 수정하면 드롭다운 목록도 함께 바뀝니다.'
+  ];
+  return `
+    <div class="card">
+      <div class="section-title">
+        <div>
+          <h2>홈</h2>
+          <div class="note">운영 안내와 요약 그래프를 함께 볼 수 있는 홈 화면입니다.</div>
+        </div>
+      </div>
+      <div class="section-grid">
+        <div class="subcard">
+          <h3>사용 순서</h3>
+          <div class="notes-list">
+            <ul>${items.map(x=>`<li>${escapeHtml(x)}</li>`).join('')}</ul>
+          </div>
+        </div>
+        <div class="subcard">
+          <h3>관리 포인트</h3>
+          <div class="notes-list">
+            <ul>${tips.map(x=>`<li>${escapeHtml(x)}</li>`).join('')}</ul>
+          </div>
+        </div>
+      </div>
+    </div>
+    ${renderSummaryCharts('overview')}
+  `;
+}
+function renderCodes(){
+  const commonRows = Math.max(state.paymentMethods.length, state.expenseCategories.length, state.incomeTypes.length, state.memberTypes.length);
+  let common = '';
+  for (let i=0;i<commonRows;i++){
+    common += `<tr>
+      <td class="input-cell">${inputHtml(state.paymentMethods[i]||'', `updateCode(0, ${i}, this.value)`)} </td>
+      <td class="input-cell">${inputHtml(state.expenseCategories[i]||'', `updateCode(1, ${i}, this.value)`)} </td>
+      <td class="input-cell">${inputHtml(state.incomeTypes[i]||'', `updateCode(2, ${i}, this.value)`)} </td>
+      <td class="input-cell">${inputHtml(state.memberTypes[i]||'', `updateCode(3, ${i}, this.value)`)} </td>
+      <td class="center"><button class="btn ghost" onclick="removeRow('codeCommon', ${i})">-</button></td>
+    </tr>`;
+  }
+  const coachRows = Math.max(state.instructorOptions.length, 1);
+  let coaches = '';
+  for (let i=0;i<coachRows;i++){
+    coaches += `<tr>
+      <td class="input-cell">${inputHtml(state.instructorOptions[i]||'', `updateCoachOption(${i}, this.value)`)} </td>
+      <td class="center"><button class="btn ghost" onclick="removeRow('coachOption', ${i})">-</button></td>
+    </tr>`;
+  }
+  return `
+    <div class="card">
+      <div class="section-title">
+        <div>
+          <h2>코드값</h2>
+          <div class="note">드롭다운에서 사용하는 기준값입니다. 수정하면 다른 시트의 선택 목록에도 바로 반영됩니다.</div>
+        </div>
+        <button class="btn primary" onclick="addRow('codeCommon')">행 추가</button>
+      </div>
+      <div class="table-wrap" style="margin-bottom:14px;">
+        <table>
+          <thead><tr><th>결제수단</th><th>지출카테고리</th><th>수입유형</th><th>회원구분</th><th>삭제</th></tr></thead>
+          <tbody>${common}</tbody>
+        </table>
+      </div>
+      <div class="section-title" style="margin-top:4px;">
+        <div>
+          <h2 style="font-size:17px;">담당강사 기준값</h2>
+          <div class="note">회원등록과 요약 그래프에서 강사별 집계를 볼 때 사용합니다.</div>
+        </div>
+        <button class="btn primary" onclick="addRow('coachOption')">행 추가</button>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>담당강사</th><th>삭제</th></tr></thead>
+          <tbody>${coaches}</tbody>
+        </table>
+      </div>
+      <div class="small" style="margin-top:10px;">※ 결제수단 기본값: 현금/계좌이체/카드/간편결제/기타</div>
+    </div>
+  `;
+}
+function renderPrices(){
+  const rows = state.priceTable.map((r, idx) => `
+    <tr>
+      <td class="input-cell">${inputHtml(r.product, `updatePrice(${idx}, 'product', this.value)`)} </td>
+      <td class="input-cell">${inputHtml(r.total, `updatePrice(${idx}, 'total', this.value)`, 'number', '', 1)} </td>
+      <td class="input-cell">${inputHtml(r.price, `updatePrice(${idx}, 'price', this.value)`, 'number', '', 1000)} </td>
+      <td class="computed currency">${plainNumberHtml(r.total ? (Number(r.price)||0) / (Number(r.total)||1) : 0)}</td>
+      <td class="input-cell">${inputHtml(r.days, `updatePrice(${idx}, 'days', this.value)`, 'number', '', 1)} </td>
+      <td class="input-cell">${inputHtml(r.refund, `updatePrice(${idx}, 'refund', this.value)`)} </td>
+      <td class="input-cell">${inputHtml(r.note, `updatePrice(${idx}, 'note', this.value)`)} </td>
+      <td class="center"><button class="btn ghost" onclick="removeRow('price', ${idx})">-</button></td>
+    </tr>`).join('');
+  return `
+    <div class="card">
+      <div class="section-title">
+        <div>
+          <h2>회원권_가격표</h2>
+          <div class="note">상품명은 회원등록·수입기록의 드롭다운과 동일하게 연결됩니다.</div>
+        </div>
+        <button class="btn primary" onclick="addRow('price')">상품 추가</button>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>상품명</th><th>총횟수</th><th>판매가</th><th>회당가격</th><th>유효기간(일)</th><th>환불기준</th><th>비고</th><th>삭제</th>
+            </tr>
+          </thead>
+          <tbody>${rows}</tbody>
+        </table>
+      </div>
+    </div>
+  `;
+}
+function renderMembers(){
+  const rows = state.members.map((m, idx) => {
+    const d = memberDerived(m, idx);
+    const statusClass = `status-badge s-${d.status || '이용중'}`;
+    const regType = memberRegistrationType(m, idx);
+    return `<tr>
+      <td class="computed">${escapeHtml(d.id)}</td>
+      <td class="input-cell">${inputHtml(m.name, `updateMember(${idx}, 'name', this.value)`)} </td>
+      <td class="input-cell">${inputHtml(m.phone, `updateMember(${idx}, 'phone', this.value)`, 'tel', 'phone-input')} </td>
+      <td class="input-cell">${selectHtml('memberType', m.regType || regType, `updateMember(${idx}, 'regType', this.value)`)}</td>
+      <td class="input-cell">${selectHtml('product', m.product, `updateMember(${idx}, 'product', this.value)`)}</td>
+      <td class="input-cell">${dateHtml(m.start, `updateMember(${idx}, 'start', this.value)`)} </td>
+      <td class="computed center">${escapeHtml(d.end || '')}</td>
+      <td class="input-cell">${inputHtml(m.total, `updateMember(${idx}, 'total', this.value)`, 'number', '', 1)} </td>
+      <td class="input-cell">${inputHtml(m.used, `updateMember(${idx}, 'used', this.value)`, 'number', '', 1)} </td>
+      <td class="computed center">${plainNumberHtml(d.remain)}</td>
+      <td class="computed currency">${plainNumberHtml(d.unit)}</td>
+      <td class="input-cell">${selectHtml('coach', m.coach, `updateMember(${idx}, 'coach', this.value)`)}</td>
+      <td class="computed center"><span class="${statusClass}">${escapeHtml(d.status)}</span></td>
+      <td class="center"><button class="btn ghost" onclick="removeRow('member', ${idx})">-</button></td>
+    </tr>`;
+  }).join('');
+  const stats = memberRegistrationStats();
+  return `
+    <div class="card">
+      <div class="section-title">
+        <div>
+          <h2>회원등록</h2>
+          <div class="note">상품의 유효기간을 기준으로 종료일이 자동 계산됩니다.</div>
+        </div>
+        <button class="btn primary" onclick="addRow('member')">회원 추가</button>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>회원ID</th><th>회원명</th><th>연락처(선택)</th><th>회원구분</th><th>상품명</th><th>시작일</th><th>종료일</th>
+              <th>총횟수</th><th>사용횟수</th><th>잔여횟수</th><th>회당단가</th><th>담당강사</th><th>상태</th><th>삭제</th>
+            </tr>
+          </thead>
+          <tbody>${rows}</tbody>
+        </table>
+      </div>
+      <div class="small" style="margin-top:10px;">재등록율 = 재등록 / (신규 + 재등록) · 신규 ${fmtNumber(stats.newCount)}건 / 재등록 ${fmtNumber(stats.reCount)}건</div>
+    </div>
+  `;
+}
+function renderIncome(){
+  const linked = memberIncomeRows().map((r, idx) => `
+    <tr>
+      <td class="computed">${escapeHtml(r.date)}</td>
+      <td class="computed">${escapeHtml(r.name)}</td>
+      <td class="computed">${escapeHtml(r.id)}</td>
+      <td class="computed">${escapeHtml(r.product)}</td>
+      <td class="computed currency">${plainNumberHtml(r.price)}</td>
+      <td class="computed currency">${plainNumberHtml(r.discount)}</td>
+      <td class="computed currency">${plainNumberHtml(r.received)}</td>
+      <td class="computed">${escapeHtml(r.method)}</td>
+      <td class="computed">${escapeHtml(r.coach)}</td>
+      <td class="computed">${escapeHtml(r.type)}</td>
+      <td class="computed">${escapeHtml(r.note)}</td>
+    </tr>`).join('');
+
+  const manual = state.manualIncomes.map((r, idx) => `
+    <tr>
+      <td class="input-cell">${dateHtml(r.date, `updateManualIncome(${idx}, 'date', this.value)`)} </td>
+      <td class="input-cell">${inputHtml(r.item, `updateManualIncome(${idx}, 'item', this.value)`)} </td>
+      <td class="input-cell currency">${inputHtml(r.amount, `updateManualIncome(${idx}, 'amount', this.value)`, 'number', '', 1000)} </td>
+      <td class="input-cell">${selectHtml('payment', r.method, `updateManualIncome(${idx}, 'method', this.value)`)}</td>
+      <td class="input-cell">${selectHtml('coach', r.coach, `updateManualIncome(${idx}, 'coach', this.value)`)}</td>
+      <td class="input-cell">${selectHtml('income', r.type, `updateManualIncome(${idx}, 'type', this.value)`)}</td>
+      <td class="input-cell">${inputHtml(r.note, `updateManualIncome(${idx}, 'note', this.value)`)} </td>
+      <td class="center"><button class="btn ghost" onclick="removeRow('manualIncome', ${idx})">-</button></td>
+    </tr>`).join('');
+
+  return `
+    <div class="card">
+      <div class="section-title">
+        <div>
+          <h2>수입기록</h2>
+          <div class="note">회원권 매출은 회원등록에서 자동 연동되고, 개별 수입은 아래에서 직접 입력합니다.</div>
+        </div>
+      </div>
+      <div class="subcard" style="margin-bottom:14px;">
+        <h3>회원권 자동 연동</h3>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>결제일</th><th>회원명</th><th>회원ID</th><th>상품명</th><th>정가</th>
+                <th>할인/조정</th><th>실수납액</th><th>결제수단</th><th>담당자</th><th>수입유형</th><th>비고</th>
+              </tr>
+            </thead>
+            <tbody>${linked}</tbody>
+          </table>
+        </div>
+      </div>
+      <div class="subcard">
+        <div class="section-title" style="margin-bottom:8px;">
+          <div>
+            <h3>직접 입력 수입</h3>
+            <div class="small">개인레슨, 이벤트, 환불 등 회원권 외 수입을 기록하는 공간입니다.</div>
+          </div>
+          <button class="btn primary" onclick="addRow('manualIncome')">행 추가</button>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>수입일</th><th>항목</th><th>금액</th><th>결제수단</th><th>담당자</th><th>수입유형</th><th>비고</th><th>삭제</th>
+              </tr>
+            </thead>
+            <tbody>${manual}</tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  `;
+}
+function renderExpenses(){
+  const rows = state.expenses.map((r, idx) => `
+    <tr>
+      <td class="input-cell">${dateHtml(r.date, `updateExpense(${idx}, 'date', this.value)`)} </td>
+      <td class="input-cell">${selectHtml('expense', r.category, `updateExpense(${idx}, 'category', this.value)`)}</td>
+      <td class="input-cell">${inputHtml(r.item, `updateExpense(${idx}, 'item', this.value)`)} </td>
+      <td class="input-cell currency">${inputHtml(r.amount, `updateExpense(${idx}, 'amount', this.value)`, 'number', '', 1000)} </td>
+      <td class="input-cell">${selectHtml('payment', r.method, `updateExpense(${idx}, 'method', this.value)`)}</td>
+      <td class="input-cell">${inputHtml(r.note, `updateExpense(${idx}, 'note', this.value)`)} </td>
+      <td class="center"><button class="btn ghost" onclick="removeRow('expense', ${idx})">-</button></td>
+    </tr>`).join('');
+  return `
+    <div class="card">
+      <div class="section-title">
+        <div>
+          <h2>지출관리</h2>
+          <div class="note">임대료, 관리비, 인건비, 광고비, 소모품비 등을 입력합니다.</div>
+        </div>
+        <button class="btn primary" onclick="addRow('expense')">지출 추가</button>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr><th>지출일</th><th>카테고리</th><th>항목</th><th>금액</th><th>결제수단</th><th>비고</th><th>삭제</th></tr>
+          </thead>
+          <tbody>${rows}</tbody>
+        </table>
+      </div>
+    </div>
+  `;
+}
+function renderSales(){
+  const rows = state.priceTable.map((p) => {
+    const count = memberIncomeRows().filter(r => r.product === p.product && Number(r.received) > 0).length;
+    const totalSales = memberIncomeRows().filter(r => r.product === p.product).reduce((a,r)=>a+(Number(r.received)||0),0);
+    const avg = count ? totalSales / count : 0;
+    return `<tr>
+      <td>${escapeHtml(p.product)}</td>
+      <td class="currency">${plainNumberHtml(count)}</td>
+      <td class="currency">${plainNumberHtml(totalSales)}</td>
+      <td class="currency">${plainNumberHtml(avg)}</td>
+      <td class="currency">${plainNumberHtml(p.total)}</td>
+      <td class="currency">${plainNumberHtml(p.unit)}</td>
+      <td class="currency">${plainNumberHtml(p.days)}</td>
+    </tr>`;
+  }).join('');
+  return `
+    <div class="card">
+      <div class="section-title">
+        <div>
+          <h2>횟수권별매출</h2>
+          <div class="note">상품별 판매건수와 매출을 자동 집계합니다.</div>
+        </div>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr><th>상품명</th><th>판매건수</th><th>총매출</th><th>평균정가</th><th>총횟수</th><th>회당가격</th><th>유효기간(일)</th></tr>
+          </thead>
+          <tbody>${rows}</tbody>
+        </table>
+      </div>
+    </div>
+  `;
+}
+function renderMonthly(){
+  const y = Number(state.year) || new Date().getFullYear();
+  const months = annualSummary();
+  const monthHeads = Array.from({length:12}, (_,i) => `<th>${monthLabel(y,i)}</th>`).join('');
+  const row = (label, getter) => `
+    <tr>
+      <th>${label}</th>
+      ${months.map((m,i)=>{ const v = getter(m,i); const isProfit = label === '영업이익'; return `<td class="currency">${isProfit ? signedNumberHtml(v) : plainNumberHtml(v)}</td>`; }).join('')}
+    </tr>`;
+  const pctRow = (label, getter) => `
+    <tr>
+      <th>${label}</th>
+      ${months.map((m,i)=>{ const v = getter(m,i); return `<td class="currency">${label === '마진율' ? signedPctHtml(v) : plainPctHtml(v)}</td>`; }).join('')}
+    </tr>`;
+  return `
+    <div class="card">
+      <div class="section-title">
+        <div>
+          <h2>월간요약</h2>
+          <div class="note">기준연도를 바꾸면 12개월 매출/지출/이익이 즉시 다시 계산됩니다.</div>
+        </div>
+        <div class="sheet-controls">
+          <button class="btn primary" onclick="document.getElementById('yearInput').focus()">연도 수정</button>
+        </div>
+      </div>
+      ${renderSummaryCharts('monthly')}
+      <div class="table-wrap" style="margin-top:14px;">
+        <table>
+          <thead>
+            <tr><th>항목</th>${monthHeads}</tr>
+          </thead>
+          <tbody>
+            ${row('회원권매출', m=>m.rev.memberRevenue)}
+            ${row('기타수입', m=>m.rev.otherRevenue)}
+            ${row('총매출', m=>m.rev.totalRevenue)}
+            <tr><td colspan="13" style="background:#f8fbff;height:8px;"></td></tr>
+            ${row('임대료', m=>m.exp['임대료'])}
+            ${row('관리비', m=>m.exp['관리비'])}
+            ${row('인건비', m=>m.exp['인건비'])}
+            ${row('광고비', m=>m.exp['광고비'])}
+            ${row('소모품비', m=>m.exp['소모품비'])}
+            ${row('기타지출', m=>m.exp['기타'])}
+            ${row('총지출', m=>m.exp.totalExpense)}
+            <tr><td colspan="13" style="background:#f8fbff;height:8px;"></td></tr>
+            ${row('영업이익', m=>m.profit)}
+            ${pctRow('마진율', m=>m.margin)}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  `;
+}
+function renderKpis(){
+  const rev = revenueYTD();
+  const exp = expenseYTD();
+  const profit = profitYTD();
+  const margin = marginYTD();
+  const stats = memberRegistrationStats();
+  const cards = [
+    ['회원 수', fmtNumber(totalMemberCount()), `활성 ${fmtNumber(activeMemberCount())} · 만료 ${fmtNumber(expiredMemberCount())} · 소진 ${fmtNumber(soldOutMemberCount())}`],
+    ['신규', fmtNumber(stats.newCount), '회원구분 기준'],
+    ['재등록', fmtNumber(stats.reCount), '회원구분 기준'],
+    ['재등록율', plainPctHtml(stats.rate), '재등록 / 전체 등록'],
+    ['연매출', fmtNumber(rev), `기준연도 ${state.year}`],
+    ['영업이익 / 마진율', `${signedNumberHtml(profit)} · ${signedPctHtml(margin)}`, `연지출 ${fmtNumber(exp)}`],
+  ];
+  return cards.map(([label, value, sub])=>`
+    <div class="kpi">
+      <div class="label">${label}</div>
+      <div class="value">${value}</div>
+      <div class="sub">${sub}</div>
+    </div>
+  `).join('');
+}
+function renderSheets(){
+  return `
+    <div class="sheet ${activeTab==='overview'?'active':''}" data-sheet="overview">${renderOverview()}</div>
+    <div class="sheet ${activeTab==='codes'?'active':''}" data-sheet="codes">${renderCodes()}</div>
+    <div class="sheet ${activeTab==='prices'?'active':''}" data-sheet="prices">${renderPrices()}</div>
+    <div class="sheet ${activeTab==='members'?'active':''}" data-sheet="members">${renderMembers()}</div>
+    <div class="sheet ${activeTab==='income'?'active':''}" data-sheet="income">${renderIncome()}</div>
+    <div class="sheet ${activeTab==='expenses'?'active':''}" data-sheet="expenses">${renderExpenses()}</div>
+    <div class="sheet ${activeTab==='sales'?'active':''}" data-sheet="sales">${renderSales()}</div>
+    <div class="sheet ${activeTab==='monthly'?'active':''}" data-sheet="monthly">${renderMonthly()}</div>
+  `;
+}
+function recalc(){
+  const snapshot = captureUiState();
+  syncMemberValidityAll();
+  const coachList = coachOptions();
+  if (state.selectedCoachChart && !coachList.includes(state.selectedCoachChart)) {
+    state.selectedCoachChart = coachList[0] || '';
+  }
+  if (!state.selectedCoachChart) state.selectedCoachChart = coachList[0] || '';
+  document.getElementById('yearInput').value = state.year;
+  document.getElementById('todayInfo').value = fmtDate(todayDate());
+  document.getElementById('kpiRow').innerHTML = renderKpis();
+  document.getElementById('sheets').innerHTML = renderSheets();
+  document.getElementById('tabs').innerHTML = renderTabs();
+  document.querySelectorAll('.sheet').forEach(el => el.classList.toggle('active', el.dataset.sheet === activeTab));
+  const active = [...document.querySelectorAll('.tab')].find(b => b.textContent === sheetLabels[activeTab]);
+  document.querySelectorAll('.tab').forEach(b => b.classList.toggle('active', b === active));
+  renderCharts();
+  restoreUiState(snapshot);
+  saveState();
+}
+document.getElementById('yearInput').addEventListener('input', e => updateYear(e.target.value));
+recalc();
+</script>
+</body>
+</html>
