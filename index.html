@@ -273,6 +273,143 @@
   .positive,.signed-positive{color:#dc2626;font-weight:800;}
   .negative,.signed-negative{color:#2563eb;font-weight:800;}
 
+
+  /* Cleaner UI overrides */
+  body{
+    background:linear-gradient(180deg, #f8fafc 0%, #eef3f9 100%);
+  }
+  .app{
+    max-width:1640px;
+    padding:20px;
+  }
+  .sticky-top{
+    position:sticky;
+    top:0;
+    z-index:20;
+    backdrop-filter:blur(12px);
+    background:rgba(248,250,252,.86);
+    padding:14px 0 12px;
+    margin:0 -20px 10px;
+    padding-left:20px;
+    padding-right:20px;
+    border-bottom:1px solid rgba(217,225,236,.75);
+  }
+  .topbar{
+    gap:12px;
+    margin-bottom:14px;
+    align-items:center;
+  }
+  .brand h1{
+    font-size:26px;
+    line-height:1.15;
+  }
+  .brand p{font-size:13px;}
+  .actions{
+    gap:10px;
+    align-items:stretch;
+  }
+  .control{
+    box-shadow:none;
+    border-radius:16px;
+    padding:12px 13px;
+    min-width:unset;
+  }
+  .control label{
+    margin-bottom:8px;
+    font-size:11px;
+    letter-spacing:.02em;
+    text-transform:uppercase;
+  }
+  .control input,.control select,.control textarea{
+    border-radius:11px;
+    min-height:40px;
+    background:#fff;
+  }
+  .control input::placeholder,.control textarea::placeholder{color:#94a3b8;}
+  .btn{
+    border-radius:11px;
+    min-height:38px;
+    padding:9px 12px;
+    box-shadow:none;
+    transition:transform .06s ease, box-shadow .12s ease, border-color .12s ease, background-color .12s ease;
+  }
+  .btn:hover{transform:translateY(-1px);}
+  .tabs{
+    margin:12px 0 0;
+    padding-bottom:2px;
+  }
+  .tab{
+    border-radius:999px;
+    padding:9px 13px;
+    box-shadow:none;
+    background:#fff;
+  }
+  .card{
+    border-radius:22px;
+    padding:20px;
+    margin-bottom:14px;
+  }
+  .section-title{
+    margin-bottom:12px;
+    padding-bottom:10px;
+    border-bottom:1px solid var(--line2);
+  }
+  .section-title h2{font-size:19px;}
+  .section-title .note{font-size:12px;}
+  .subcard{
+    border-radius:18px;
+    background:#fbfdff;
+  }
+  .subcard h3{font-size:15px;}
+  .kpis{
+    gap:10px;
+  }
+  .kpi{
+    border-radius:18px;
+    padding:15px;
+  }
+  .kpi .label{font-size:11px; text-transform:uppercase; letter-spacing:.02em;}
+  .kpi .value{font-size:22px;}
+  .table-wrap{
+    border-radius:16px;
+    box-shadow:none;
+    background:#fff;
+  }
+  th, td{
+    padding:9px 11px;
+    font-size:13px;
+  }
+  thead th{
+    background:#f8fbff;
+    font-size:12px;
+    letter-spacing:.01em;
+  }
+  tbody tr:hover td{background:#f8fbff;}
+  td.input-cell input, td.input-cell select, td.input-cell textarea{
+    min-width:100px;
+    border-radius:10px;
+    padding:7px 9px;
+  }
+  td.input-cell textarea{min-width:160px;}
+  .sheet-controls .control,
+  .member-filters .filter-item{
+    box-shadow:none;
+  }
+  .chart-card{
+    border-radius:18px;
+    padding:12px;
+  }
+  .chart-wrap{
+    border-radius:12px;
+  }
+  .chart-head h3{font-size:15px;}
+  .legend-note{font-size:11px;}
+  .status-badge{padding:4px 8px;}
+  .small{line-height:1.55;}
+  .notes-list{line-height:1.6;}
+  .muted-box{border-radius:12px;}
+  .footer-space{height:24px;}
+
 </style>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
@@ -304,32 +441,19 @@
             <input id="importFile" type="file" accept="application/json,.json" style="display:none" onchange="importBackup(this.files && this.files[0])" />
           </div>
         </div>
-          <div class="control">
-      <label>데이터 백업</label>
-      <div style="display:flex;gap:8px;flex-wrap:wrap">
-        <button class="btn primary" type="button" onclick="exportBackup()">내보내기</button>
-        <button class="btn" type="button" onclick="document.getElementById('importFile').click()">불러오기</button>
-        <input id="importFile" type="file" accept="application/json,.json" style="display:none" onchange="importBackup(this.files && this.files[0])" />
-      </div>
-    </div>
-
-    <div class="control" id="supabaseControl">
+    <div class="control">
       <label>Supabase 동기화</label>
       <div id="syncStatus" class="small" style="margin-bottom:8px;">로컬 저장 모드</div>
-      <div class="small" id="authHint" style="margin-bottom:8px;">로그인 후 입력값은 자동 저장됩니다.</div>
-
-      <div id="authLoggedOut" style="display:grid;gap:8px;min-width:280px">
+      <div class="small" style="margin-bottom:8px;">로그인 후 입력값은 자동 저장됩니다.</div>
+      <div style="display:grid;gap:8px;min-width:280px">
         <input id="authEmail" type="email" placeholder="로그인 이메일" autocomplete="username" />
         <input id="authPassword" type="password" placeholder="비밀번호" autocomplete="current-password" />
         <div style="display:flex;gap:8px;flex-wrap:wrap">
           <button class="btn primary" type="button" onclick="loginSupabase()">로그인</button>
+          <button class="btn" type="button" onclick="pullSupabaseState()">서버 불러오기</button>
+          <button class="btn" type="button" onclick="logoutSupabase()">로그아웃</button>
         </div>
-      </div>
-
-      <div id="authLoggedIn" style="display:none;align-items:center;gap:10px;flex-wrap:wrap">
-        <span id="authUserLabel" class="small" style="font-weight:700;"></span>
-        <button class="btn" type="button" onclick="logoutSupabase()">로그아웃</button>
-      </div>
+      </div></div>
     </div>
     <div class="kpis" id="kpiRow"></div>
     <div class="tabs" id="tabs"></div>
@@ -429,16 +553,6 @@ function setSyncStatus(text, tone='neutral'){
   el.style.color = tone === 'good' ? '#0f766e' : tone === 'bad' ? '#b91c1c' : '#6b7280';
 }
 
-function updateAuthUI(session){
-  const loggedOut = document.getElementById('authLoggedOut');
-  const loggedIn = document.getElementById('authLoggedIn');
-  const userLabel = document.getElementById('authUserLabel');
-  const email = session?.user?.email || '';
-  if (loggedOut) loggedOut.style.display = session ? 'none' : 'grid';
-  if (loggedIn) loggedIn.style.display = session ? 'flex' : 'none';
-  if (userLabel) userLabel.textContent = session ? `로그인됨 · ${email || '계정'}` : '';
-}
-
 function supabaseAvailable(){
   return typeof window !== 'undefined'
     && typeof window.supabase !== 'undefined'
@@ -461,22 +575,19 @@ async function initSupabase(){
     const { data } = await supabaseClient.auth.getSession();
     supabaseSession = data && data.session ? data.session : null;
     if (supabaseSession) {
-      updateAuthUI(supabaseSession);
-      setSyncStatus(`로그인됨 · ${supabaseSession.user?.email || '계정'}`, 'good');
+      setSyncStatus(`로그인 완료 · ${supabaseSession.user?.email || '계정'}`, 'good');
       await attachSupabaseState();
     } else {
-      updateAuthUI(null);
       setSyncStatus('로컬 저장 모드 · 자동 저장 비활성');
     }
     supabaseClient.auth.onAuthStateChange(async (_event, session) => {
       supabaseSession = session || null;
-      updateAuthUI(supabaseSession);
       if (session) {
-        setSyncStatus(`로그인됨 · ${session.user?.email || '계정'}`, 'good');
+        setSyncStatus(`로그인 완료 · ${session.user?.email || '계정'}`, 'good');
         await attachSupabaseState();
       } else {
         detachSupabaseState();
-        setSyncStatus('로그아웃됨 · 최초 로그인 화면', 'neutral');
+        setSyncStatus('로그아웃됨 · 로컬 저장 모드');
       }
     });
   } catch (err) {
@@ -608,9 +719,7 @@ async function loginSupabase(){
     alert(error.message || '로그인에 실패했습니다.');
     return;
   }
-  const emailInput = document.getElementById('authEmail');
   const pw = document.getElementById('authPassword');
-  if (emailInput) emailInput.value = '';
   if (pw) pw.value = '';
 }
 
@@ -640,6 +749,7 @@ function scheduleRecalc(force = false, delay = 650){
   if ((isComposing || editingText) && !force) {
     if (isComposing) pendingDuringComposition = true;
     if (editingText) pendingTextRender = true;
+    saveState();
     return;
   }
   pendingDuringComposition = false;
@@ -1059,7 +1169,7 @@ function updateMember(idx, field, value){
     scheduleRecalc(true);
     return;
   }
-  const delay = ['name','phone'].includes(field) ? 999999 : 180;
+  const delay = ['name','phone'].includes(field) ? 120 : 180;
   scheduleRecalc(false, delay);
 }
 function updateExpense(idx, field, value){
@@ -1348,8 +1458,8 @@ function inputHtml(value, oninput, type='text', cls='', step=''){
   const textAttrs = textLike
     ? ' autocomplete="off" autocapitalize="off" spellcheck="false"'
     : '';
-  // 텍스트 입력은 IME(한글 조합)를 보호하기 위해 blur/change 시점에만 상태를 반영
-  const commitEvt = textLike ? 'onchange' : 'oninput';
+  // 텍스트 입력도 일반적인 oninput으로 바로 상태에 반영하고, 화면 갱신만 조합 중에는 미룬다.
+  const commitEvt = 'oninput';
   return `<input class="${cls}" type="${type}" value="${escapeHtml(v)}" ${commitEvt}="${oninput}"${stepAttr}${textAttrs} />`;
 }
 function dateHtml(value, oninput){
