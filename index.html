@@ -316,13 +316,13 @@
     <div class="control">
       <label>Supabase 동기화</label>
       <div id="syncStatus" class="small" style="margin-bottom:8px;">로컬 저장 모드</div>
+      <div class="small" style="margin-bottom:8px;">로그인 후 입력값은 자동 저장됩니다.</div>
       <div style="display:grid;gap:8px;min-width:280px">
         <input id="authEmail" type="email" placeholder="로그인 이메일" autocomplete="username" />
         <input id="authPassword" type="password" placeholder="비밀번호" autocomplete="current-password" />
         <div style="display:flex;gap:8px;flex-wrap:wrap">
           <button class="btn primary" type="button" onclick="loginSupabase()">로그인</button>
           <button class="btn" type="button" onclick="pullSupabaseState()">서버 불러오기</button>
-          <button class="btn" type="button" onclick="pushSupabaseState()">서버 저장</button>
           <button class="btn" type="button" onclick="logoutSupabase()">로그아웃</button>
         </div>
       </div></div>
@@ -447,15 +447,15 @@ async function initSupabase(){
     const { data } = await supabaseClient.auth.getSession();
     supabaseSession = data && data.session ? data.session : null;
     if (supabaseSession) {
-      setSyncStatus(`로그인됨 · ${supabaseSession.user?.email || '계정'}`, 'good');
+      setSyncStatus(`로그인 완료 · ${supabaseSession.user?.email || '계정'}`, 'good');
       await attachSupabaseState();
     } else {
-      setSyncStatus('로컬 저장 모드');
+      setSyncStatus('로컬 저장 모드 · 자동 저장 비활성');
     }
     supabaseClient.auth.onAuthStateChange(async (_event, session) => {
       supabaseSession = session || null;
       if (session) {
-        setSyncStatus(`로그인됨 · ${session.user?.email || '계정'}`, 'good');
+        setSyncStatus(`로그인 완료 · ${session.user?.email || '계정'}`, 'good');
         await attachSupabaseState();
       } else {
         detachSupabaseState();
@@ -498,10 +498,10 @@ async function attachSupabaseState(){
       state = normalizeState(data.data);
       localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
       scheduleRecalc(true);
-      setSyncStatus('Supabase 불러오기 완료', 'good');
+      setSyncStatus('Supabase 불러오기 완료 · 자동 저장 중', 'good');
     } else {
       await pushSupabaseState(true);
-      setSyncStatus('Supabase 새 저장소 생성', 'good');
+      setSyncStatus('Supabase 새 저장소 생성 · 자동 저장 중', 'good');
     }
 
     supabaseReady = true;
@@ -522,10 +522,10 @@ async function attachSupabaseState(){
           localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
         } catch (e) {}
         scheduleRecalc(true);
-        setSyncStatus('Supabase 실시간 반영', 'good');
+        setSyncStatus('Supabase 실시간 반영 · 자동 저장 중', 'good');
       })
       .subscribe(status => {
-        if (status === 'SUBSCRIBED') setSyncStatus('Supabase 실시간 연결됨', 'good');
+        if (status === 'SUBSCRIBED') setSyncStatus('로그인 완료 · 자동 저장 중', 'good');
       });
   } catch (err) {
     console.error(err);
@@ -543,7 +543,7 @@ function queueRemoteSave(){
 
 async function pushSupabaseState(force = false){
   if (!supabaseClient || !supabaseSession) {
-    if (!force) setSyncStatus('로그인 후 서버 저장 가능');
+    if (!force) setSyncStatus('로그인 후 자동 저장됨');
     return;
   }
   try {
@@ -556,10 +556,10 @@ async function pushSupabaseState(force = false){
       .from(SUPABASE_STATE_TABLE)
       .upsert(payload, { onConflict: 'id' });
     if (error) throw error;
-    if (!force) setSyncStatus('Supabase 저장 완료', 'good');
+    if (!force) setSyncStatus('자동 저장 완료', 'good');
   } catch (err) {
     console.error(err);
-    setSyncStatus('Supabase 저장 실패', 'bad');
+    setSyncStatus('자동 저장 실패', 'bad');
   }
 }
 
