@@ -239,6 +239,12 @@
   .s-예정{background:#eff6ff;color:#1d4ed8}
   .s-만료{background:#fef3c7;color:#92400e}
   .s-소진{background:#fee2e2;color:#b91c1c}
+  .s-재등록필요{background:#ffedd5;color:#c2410c}
+  .s-입력전{background:#f3f4f6;color:#4b5563}
+  .member-filters{display:flex;gap:12px;flex-wrap:wrap;align-items:flex-end;margin:12px 0 14px}
+  .filter-item{display:flex;flex-direction:column;gap:6px;min-width:170px}
+  .filter-item label{font-size:12px;font-weight:700;color:#6b7280}
+  .filter-item select{width:100%;min-width:170px}
   .sheet-controls{
     display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-top:8px
   }
@@ -252,9 +258,13 @@
   .chart-grid{display:grid;gap:14px;grid-template-columns:repeat(2,minmax(0,1fr));}
   @media (max-width: 1100px){.chart-grid{grid-template-columns:1fr;}}
   .chart-card{background:#fff;border:1px solid var(--line);border-radius:16px;padding:14px;}
-  .chart-head{display:flex;justify-content:space-between;gap:12px;align-items:flex-start;flex-wrap:wrap;margin-bottom:10px;}
+  .chart-head{display:flex;justify-content:space-between;gap:12px;align-items:center;flex-wrap:wrap;margin-bottom:10px;}
   .chart-head h3{margin:0;font-size:16px;}
   .series-toggles{display:flex;gap:8px;flex-wrap:wrap}
+  .coach-inline{display:flex;align-items:center;gap:8px;flex-wrap:nowrap;white-space:nowrap;max-width:100%;}
+  .coach-inline .coach-label{font-weight:600;color:#111827;}
+  .coach-inline .coach-rate{font-weight:700;color:#374151;}
+  .coach-inline select{min-width:150px;max-width:180px;}
   .series-toggle{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--line);background:#fff;border-radius:999px;padding:6px 10px;font-size:12px;font-weight:700;cursor:pointer;user-select:none;}
   .series-toggle input{margin:0}
   .chart-wrap{position:relative;width:100%;height:300px;border:1px solid var(--line2);border-radius:14px;background:linear-gradient(180deg,#ffffff 0%,#fbfdff 100%);overflow:hidden;}
@@ -303,7 +313,7 @@
 </div>
 
 <script>
-const initialState = {"year": 2026, "priceTable": [{"product": "10회권", "total": 10, "price": 300000, "unit": 30000, "days": 90, "refund": "규정에 따라", "note": "예시"}, {"product": "20회권", "total": 20, "price": 560000, "unit": 28000, "days": 150, "refund": "규정에 따라", "note": "예시"}, {"product": "30회권", "total": 30, "price": 780000, "unit": 26000, "days": 210, "refund": "규정에 따라", "note": "예시"}], "paymentMethods": ["현금", "계좌이체", "카드", "간편결제", "기타"], "expenseCategories": ["임대료", "관리비", "인건비", "광고비", "소모품비", "수선비", "전기/수도/가스", "세금/수수료", "기타"], "incomeTypes": ["회원권", "개인레슨", "이벤트", "환불", "기타"], "members": [{"name": "김하늘", "phone": "010-1000-0001", "start": "2026-01-05", "end": "2026-04-04", "product": "10회권", "total": 10, "used": 10, "coach": "강사A", "regType": "신규"}], "expenses": [{"date": "2026-01-01", "category": "임대료", "item": "임대료", "amount": 1100000, "method": "계좌이체", "note": "월세"}], "manualIncomes": [{"date": "2026-01-15", "item": "개인레슨", "amount": 50000, "method": "현금", "coach": "강사A", "type": "개인레슨", "note": "예시"}], "instructorOptions": ["강사A", "강사B", "강사C"], "memberTypes": ["신규", "재등록"], "selectedCoachChart": "강사A"};
+const initialState = {"year": 2026, "priceTable": [{"product": "10회권", "total": 10, "price": 300000, "unit": 30000, "days": 90, "refund": "규정에 따라", "note": "예시"}, {"product": "20회권", "total": 20, "price": 560000, "unit": 28000, "days": 150, "refund": "규정에 따라", "note": "예시"}, {"product": "30회권", "total": 30, "price": 780000, "unit": 26000, "days": 210, "refund": "규정에 따라", "note": "예시"}], "paymentMethods": ["현금", "계좌이체", "카드", "간편결제", "기타"], "expenseCategories": ["임대료", "관리비", "인건비", "광고비", "소모품비", "수선비", "전기/수도/가스", "세금/수수료", "기타"], "incomeTypes": ["회원권", "개인레슨", "이벤트", "환불", "기타"], "members": [{"name": "김하늘", "phone": "010-1000-0001", "start": "2026-01-05", "end": "2026-04-04", "product": "10회권", "total": 10, "used": 10, "coach": "강사A", "regType": "신규"}], "expenses": [{"date": "2026-01-01", "category": "임대료", "item": "임대료", "amount": 1100000, "method": "계좌이체", "note": "월세"}], "manualIncomes": [{"date": "2026-01-15", "item": "개인레슨", "amount": 50000, "method": "현금", "coach": "강사A", "type": "개인레슨", "note": "예시"}], "instructorOptions": ["강사A", "강사B", "강사C"], "memberTypes": ["신규", "재등록"], "selectedCoachChart": "강사A", "memberFilters": {"coach": "전체", "status": "전체", "product": "전체", "regType": "전체"}};
 
 const STORAGE_KEY = 'hader_center_management_state_v1';
 
@@ -375,13 +385,26 @@ let pendingFocus = null;
 let isComposing = false;
 let recalcTimer = 0;
 let pendingDuringComposition = false;
+let pendingTextRender = false;
+
+function isTextEditingElement(el){
+  if (!el || !['INPUT','TEXTAREA'].includes(el.tagName)) return false;
+  if (el.tagName === 'TEXTAREA') return true;
+  const t = (el.type || '').toLowerCase();
+  return ['text','search','url','tel','email','password'].includes(t);
+}
 
 function scheduleRecalc(force = false, delay = 650){
-  if (isComposing && !force) {
-    pendingDuringComposition = true;
+  const active = typeof document !== 'undefined' ? document.activeElement : null;
+  const editingText = isTextEditingElement(active);
+
+  if ((isComposing || editingText) && !force) {
+    if (isComposing) pendingDuringComposition = true;
+    if (editingText) pendingTextRender = true;
     return;
   }
   pendingDuringComposition = false;
+  pendingTextRender = false;
   if (recalcTimer) clearTimeout(recalcTimer);
   recalcTimer = setTimeout(() => {
     recalcTimer = 0;
@@ -397,6 +420,12 @@ if (typeof document !== 'undefined') {
     if (e.target && ['INPUT','TEXTAREA'].includes(e.target.tagName)) {
       isComposing = false;
       if (pendingDuringComposition) scheduleRecalc(true);
+    }
+  }, true);
+  document.addEventListener('blur', (e) => {
+    if (isTextEditingElement(e.target) && pendingTextRender) {
+      pendingTextRender = false;
+      scheduleRecalc(true);
     }
   }, true);
 }
@@ -551,12 +580,16 @@ function memberDerived(m, idx){
   const s = parseDate(m.start);
   const e = parseDate(memberValidityEnd(m));
   const t = todayDate();
+
   if (name) {
-    if (s && t < s) status = '예정';
+    if (!s || !m.product || total <= 0) status = '입력전';
+    else if (s && t < s) status = '예정';
     else if (used >= total && total > 0) status = '소진';
     else if (e && t > e) status = '만료';
+    else if (remain > 0 && remain < 5) status = '재등록필요';
     else status = '이용중';
   }
+
   return {
     id: name ? `M${pad(idx+1,4)}` : '',
     remain,
@@ -722,6 +755,33 @@ function updateSelectedCoachChart(value){
   state.selectedCoachChart = value;
   scheduleRecalc(false, 250);
 }
+function getMemberFilters(){
+  const defaults = {coach:'전체', status:'전체', product:'전체', regType:'전체'};
+  const current = state.memberFilters && typeof state.memberFilters === 'object' ? state.memberFilters : {};
+  return {...defaults, ...current};
+}
+function updateMemberFilter(field, value){
+  state.memberFilters = {...getMemberFilters(), [field]: value};
+  scheduleRecalc(true);
+}
+function memberFilterOptions(field){
+  const filters = getMemberFilters();
+  const current = filters[field] || '';
+  const values = {
+    coach: [...new Set((state.instructorOptions || []).concat(state.members.map(m => m.coach || ''), current).filter(Boolean))],
+    status: [...new Set(state.members.map((m, idx) => memberDerived(m, idx).status).concat(current).filter(Boolean))],
+    product: [...new Set((state.priceTable || []).map(r => r.product || '').concat(state.members.map(m => m.product || ''), current).filter(Boolean))],
+    regType: [...new Set((state.memberTypes || []).concat(state.members.map((m, idx) => memberRegistrationType(m, idx)), current).filter(Boolean))],
+  };
+  return ['전체', ...values[field]];
+}
+function memberMatchesFilters(m, idx, d, regType, filters){
+  if (filters.coach && filters.coach !== '전체' && (m.coach || '') !== filters.coach) return false;
+  if (filters.status && filters.status !== '전체' && (d.status || '') !== filters.status) return false;
+  if (filters.product && filters.product !== '전체' && (m.product || '') !== filters.product) return false;
+  if (filters.regType && filters.regType !== '전체' && (regType || '') !== filters.regType) return false;
+  return true;
+}
 function updateYear(v){
   const n = parseInt(v,10);
   if (!isNaN(n)) state.year = n;
@@ -756,7 +816,11 @@ function updateMember(idx, field, value){
   if (['total','used','payment'].includes(field)) row[field] = value === '' ? '' : Number(value);
   else row[field] = value;
   if (['start','product'].includes(field)) syncMemberValidityAll();
-  const delay = ['name','phone'].includes(field) ? 3000 : 180;
+  if (['start','product','total','used'].includes(field)) {
+    scheduleRecalc(true);
+    return;
+  }
+  const delay = ['name','phone'].includes(field) ? 999999 : 180;
   scheduleRecalc(false, delay);
 }
 function updateExpense(idx, field, value){
@@ -838,12 +902,23 @@ function setTab(id){
   document.querySelectorAll('.tab').forEach(btn => btn.classList.remove('active'));
   const btn = [...document.querySelectorAll('.tab')].find(b => b.textContent === sheetLabels[id]);
   if (btn) btn.classList.add('active');
+  scheduleChartRender();
 }
 const sheetLabels = {
   overview:'홈', codes:'코드값', prices:'회원권_가격표', members:'회원등록',
   income:'수입기록', expenses:'지출관리', sales:'횟수권별매출', monthly:'월간요약'
 };
 let activeTab = 'overview';
+let chartRenderHandle = 0;
+function scheduleChartRender(){
+  if (chartRenderHandle) cancelAnimationFrame(chartRenderHandle);
+  chartRenderHandle = requestAnimationFrame(() => {
+    chartRenderHandle = requestAnimationFrame(() => {
+      chartRenderHandle = 0;
+      renderCharts();
+    });
+  });
+}
 
 const chartSeries = {
   amount: [
@@ -959,7 +1034,7 @@ function renderCharts(){
   const labels = Array.from({length:12}, (_,i) => monthLabel(y,i));
   const amountTargets = [
     { prefix:'overview', amountId:'overviewAmountToggles', canvasId:'overviewAmountChart' },
-    { prefix:'monthly', amountId:'amountToggles', canvasId:'amountChart' },
+    { prefix:'monthly', amountId:'monthlyAmountToggles', canvasId:'monthlyAmountChart' },
   ];
   amountTargets.forEach(t => {
     const amountSeries = chartSeries.amount.map(s => ({
@@ -1022,10 +1097,21 @@ function selectHtml(kind, current, onChange, extraClass=''){
     ${options.map(v => `<option value="${escapeHtml(v)}" ${String(v)===String(current)?'selected':''}>${escapeHtml(v)}</option>`).join('')}
   </select>`;
 }
+function plainSelectHtml(options, current, onChange, extraClass=''){
+  return `<select class="${extraClass}" onchange="${onChange}">
+    ${options.map(v => `<option value="${escapeHtml(v)}" ${String(v)===String(current)?'selected':''}>${escapeHtml(v)}</option>`).join('')}
+  </select>`;
+}
 function inputHtml(value, oninput, type='text', cls='', step=''){
   const v = value === null || value === undefined ? '' : value;
   const stepAttr = step ? ` step="${step}"` : '';
-  return `<input class="${cls}" type="${type}" value="${escapeHtml(v)}" oninput="${oninput}"${stepAttr} />`;
+  const textLike = ['text','search','url','tel','email','password'].includes(type);
+  const textAttrs = textLike
+    ? ' autocomplete="off" autocapitalize="off" spellcheck="false"'
+    : '';
+  // 텍스트 입력은 IME(한글 조합)를 보호하기 위해 blur/change 시점에만 상태를 반영
+  const commitEvt = textLike ? 'onchange' : 'oninput';
+  return `<input class="${cls}" type="${type}" value="${escapeHtml(v)}" ${commitEvt}="${oninput}"${stepAttr}${textAttrs} />`;
 }
 function dateHtml(value, oninput){
   return inputHtml(fmtDate(value), oninput, 'date');
@@ -1063,10 +1149,9 @@ function renderSummaryCharts(source='overview'){
     enabled:true,
     data: months.map(m => m.rev.totalRevenue)
   }];
-  const coachChips = coachOptions().map(c => {
-    const s = coachRegistrationStats(c);
-    return `<span class="chart-chip">${escapeHtml(c)} 재등록율 ${plainPctHtml(s.rate)} (${fmtNumber(s.reCount)}/${fmtNumber(s.total)})</span>`;
-  }).join('');
+  const selectedCoachRateHtml = selected
+    ? `${plainPctHtml(selectedStats.rate)} ${fmtNumber(selectedStats.reCount)}/${fmtNumber(selectedStats.total)}`
+    : '0.0%';
   return `
     <div class="card" style="margin-top:14px;">
       <div class="section-title">
@@ -1088,19 +1173,14 @@ function renderSummaryCharts(source='overview'){
         </div>
         <div class="chart-card">
           <div class="chart-head">
-            <div>
+            <div style="min-width:0;">
               <h3>담당 강사별 매출 그래프</h3>
-              <div class="legend-note">전체 매출과 선택한 강사의 월별 매출, 재등록율을 함께 확인합니다.</div>
-              <div class="chart-stats">
-                <span class="chart-chip">선택 강사 재등록율 ${selectedStats ? plainPctHtml(selectedStats.rate) : '0.0%'}${selectedStats ? ` (${fmtNumber(selectedStats.reCount)}/${fmtNumber(selectedStats.total)})` : ''}</span>
-                ${coachChips}
-              </div>
+              <div class="legend-note">전체 매출과 선택한 강사의 월별 매출을 함께 확인합니다.</div>
             </div>
-            <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
-              <div class="control" style="box-shadow:none;padding:8px 10px;">
-                <label style="margin-bottom:4px;">강사 선택</label>
-                ${selectHtml('coach', selected, `updateSelectedCoachChart(this.value)`)}
-              </div>
+            <div class="coach-inline">
+              <span class="coach-label">강사 선택 :</span>
+              ${selectHtml('coach', selected, `updateSelectedCoachChart(this.value)`)}
+              <span class="coach-rate">(재등록율 : ${selectedCoachRateHtml})</span>
             </div>
           </div>
           <div class="chart-wrap"><canvas id="${source}CoachChart" class="chart-canvas"></canvas></div>
@@ -1237,10 +1317,15 @@ function renderPrices(){
   `;
 }
 function renderMembers(){
-  const rows = state.members.map((m, idx) => {
+  const filters = getMemberFilters();
+  const rowsData = state.members.map((m, idx) => {
     const d = memberDerived(m, idx);
-    const statusClass = `status-badge s-${d.status || '이용중'}`;
     const regType = memberRegistrationType(m, idx);
+    return {m, idx, d, regType};
+  }).filter(({m, idx, d, regType}) => memberMatchesFilters(m, idx, d, regType, filters));
+
+  const rows = rowsData.map(({m, idx, d, regType}) => {
+    const statusClass = `status-badge s-${d.status || '입력전'}`;
     return `<tr>
       <td class="computed">${escapeHtml(d.id)}</td>
       <td class="input-cell">${inputHtml(m.name, `updateMember(${idx}, 'name', this.value)`)} </td>
@@ -1258,16 +1343,43 @@ function renderMembers(){
       <td class="center"><button class="btn ghost" onclick="removeRow('member', ${idx})">-</button></td>
     </tr>`;
   }).join('');
+
   const stats = memberRegistrationStats();
+  const coachOpts = memberFilterOptions('coach');
+  const statusOpts = memberFilterOptions('status');
+  const productOpts = memberFilterOptions('product');
+  const regTypeOpts = memberFilterOptions('regType');
+
   return `
     <div class="card">
       <div class="section-title">
         <div>
           <h2>회원등록</h2>
-          <div class="note">상품의 유효기간을 기준으로 종료일이 자동 계산됩니다.</div>
+          <div class="note">상품의 유효기간을 기준으로 종료일이 자동 계산됩니다. 잔여횟수 5회 미만은 재등록 필요로 표시됩니다.</div>
         </div>
         <button class="btn primary" onclick="addRow('member')">회원 추가</button>
       </div>
+
+      <div class="member-filters">
+        <div class="filter-item">
+          <label>담당강사</label>
+          ${plainSelectHtml(coachOpts, filters.coach, `updateMemberFilter('coach', this.value)`)}
+        </div>
+        <div class="filter-item">
+          <label>상태</label>
+          ${plainSelectHtml(statusOpts, filters.status, `updateMemberFilter('status', this.value)`)}
+        </div>
+        <div class="filter-item">
+          <label>상품명</label>
+          ${plainSelectHtml(productOpts, filters.product, `updateMemberFilter('product', this.value)`)}
+        </div>
+        <div class="filter-item">
+          <label>회원 구분</label>
+          ${plainSelectHtml(regTypeOpts, filters.regType, `updateMemberFilter('regType', this.value)`)}
+        </div>
+        <button class="btn ghost" type="button" style="height:40px;margin-bottom:0;" onclick="state.memberFilters={coach:'전체',status:'전체',product:'전체',regType:'전체'}; scheduleRecalc(true);">필터 초기화</button>
+      </div>
+
       <div class="table-wrap">
         <table>
           <thead>
@@ -1276,14 +1388,15 @@ function renderMembers(){
               <th>총횟수</th><th>사용횟수</th><th>잔여횟수</th><th>회당단가</th><th>담당강사</th><th>상태</th><th>삭제</th>
             </tr>
           </thead>
-          <tbody>${rows}</tbody>
+          <tbody>${rows || `<tr><td colspan="14" class="center" style="padding:18px;color:var(--muted);">조건에 맞는 회원이 없습니다.</td></tr>`}</tbody>
         </table>
       </div>
-      <div class="small" style="margin-top:10px;">재등록율 = 재등록 / (신규 + 재등록) · 신규 ${fmtNumber(stats.newCount)}건 / 재등록 ${fmtNumber(stats.reCount)}건</div>
+      <div class="small" style="margin-top:10px;">재등록율 = 재등록 / (신규 + 재등록) · 신규 ${fmtNumber(stats.newCount)}건 / 재등록 ${fmtNumber(stats.reCount)}건 · 재등록 필요 = 잔여횟수 5회 미만</div>
     </div>
   `;
 }
 function renderIncome(){
+
   const linked = memberIncomeRows().map((r, idx) => `
     <tr>
       <td class="computed">${escapeHtml(r.date)}</td>
@@ -1522,11 +1635,12 @@ function recalc(){
   document.querySelectorAll('.sheet').forEach(el => el.classList.toggle('active', el.dataset.sheet === activeTab));
   const active = [...document.querySelectorAll('.tab')].find(b => b.textContent === sheetLabels[activeTab]);
   document.querySelectorAll('.tab').forEach(b => b.classList.toggle('active', b === active));
-  renderCharts();
+  scheduleChartRender();
   restoreUiState(snapshot);
   saveState();
 }
 document.getElementById('yearInput').addEventListener('input', e => updateYear(e.target.value));
+window.addEventListener('resize', () => scheduleChartRender());
 recalc();
 </script>
 </body>
