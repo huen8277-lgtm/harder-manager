@@ -274,6 +274,8 @@
   .negative,.signed-negative{color:#2563eb;font-weight:800;}
 
 </style>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
 </head>
 <body>
 <div class="app">
@@ -302,7 +304,28 @@
             <input id="importFile" type="file" accept="application/json,.json" style="display:none" onchange="importBackup(this.files && this.files[0])" />
           </div>
         </div>
+          <div class="control">
+      <label>데이터 백업</label>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <button class="btn primary" type="button" onclick="exportBackup()">내보내기</button>
+        <button class="btn" type="button" onclick="document.getElementById('importFile').click()">불러오기</button>
+        <input id="importFile" type="file" accept="application/json,.json" style="display:none" onchange="importBackup(this.files && this.files[0])" />
       </div>
+    </div>
+
+    <div class="control">
+      <label>Supabase 동기화</label>
+      <div id="syncStatus" class="small" style="margin-bottom:8px;">로컬 저장 모드</div>
+      <div style="display:grid;gap:8px;min-width:280px">
+        <input id="authEmail" type="email" placeholder="로그인 이메일" autocomplete="username" />
+        <input id="authPassword" type="password" placeholder="비밀번호" autocomplete="current-password" />
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <button class="btn primary" type="button" onclick="loginSupabase()">로그인</button>
+          <button class="btn" type="button" onclick="pullSupabaseState()">서버 불러오기</button>
+          <button class="btn" type="button" onclick="pushSupabaseState()">서버 저장</button>
+          <button class="btn" type="button" onclick="logoutSupabase()">로그아웃</button>
+        </div>
+      </div></div>
     </div>
     <div class="kpis" id="kpiRow"></div>
     <div class="tabs" id="tabs"></div>
@@ -316,6 +339,19 @@
 const initialState = {"year": 2026, "priceTable": [{"product": "10회권", "total": 10, "price": 300000, "unit": 30000, "days": 90, "refund": "규정에 따라", "note": "예시"}, {"product": "20회권", "total": 20, "price": 560000, "unit": 28000, "days": 150, "refund": "규정에 따라", "note": "예시"}, {"product": "30회권", "total": 30, "price": 780000, "unit": 26000, "days": 210, "refund": "규정에 따라", "note": "예시"}], "paymentMethods": ["현금", "계좌이체", "카드", "간편결제", "기타"], "expenseCategories": ["임대료", "관리비", "인건비", "광고비", "소모품비", "수선비", "전기/수도/가스", "세금/수수료", "기타"], "incomeTypes": ["회원권", "개인레슨", "이벤트", "환불", "기타"], "members": [{"name": "김하늘", "phone": "010-1000-0001", "start": "2026-01-05", "end": "2026-04-04", "product": "10회권", "total": 10, "used": 10, "coach": "강사A", "regType": "신규"}], "expenses": [{"date": "2026-01-01", "category": "임대료", "item": "임대료", "amount": 1100000, "method": "계좌이체", "note": "월세"}], "manualIncomes": [{"date": "2026-01-15", "item": "개인레슨", "amount": 50000, "method": "현금", "coach": "강사A", "type": "개인레슨", "note": "예시"}], "instructorOptions": ["강사A", "강사B", "강사C"], "memberTypes": ["신규", "재등록"], "selectedCoachChart": "강사A", "memberFilters": {"coach": "전체", "status": "전체", "product": "전체", "regType": "전체"}};
 
 const STORAGE_KEY = 'hader_center_management_state_v1';
+
+const SUPABASE_URL = 'https://pabqomhjjwoqppvosbim.supabase.co';
+const SUPABASE_ANON_KEY = 'sb_publishable_hST0TEWSOA2dJNA5IVfsUg_GnKT41gz';
+const SUPABASE_STATE_TABLE = 'app_state';
+const SUPABASE_STATE_ID = 'default';
+
+let supabaseClient = null;
+let supabaseSession = null;
+let supabaseChannel = null;
+let supabaseReady = false;
+let remoteSaveTimer = 0;
+let syncStatusMessage = '로컬 저장 모드';
+
 
 function normalizeState(raw){
   const base = JSON.parse(JSON.stringify(initialState));
@@ -342,6 +378,7 @@ function saveState(){
   try{
     localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
   }catch(e){}
+  queueRemoteSave();
 }
 function exportBackup(){
   try{
@@ -378,6 +415,189 @@ function importBackup(file){
     }
   };
   reader.readAsText(file, 'utf-8');
+}
+
+function setSyncStatus(text, tone='neutral'){
+  syncStatusMessage = text || '';
+  const el = document.getElementById('syncStatus');
+  if (!el) return;
+  el.textContent = syncStatusMessage;
+  el.style.color = tone === 'good' ? '#0f766e' : tone === 'bad' ? '#b91c1c' : '#6b7280';
+}
+
+function supabaseAvailable(){
+  return typeof window !== 'undefined'
+    && typeof window.supabase !== 'undefined'
+    && SUPABASE_URL
+    && SUPABASE_ANON_KEY;
+}
+
+async function initSupabase(){
+  if (!supabaseAvailable()) {
+    setSyncStatus('Supabase 라이브러리 미로딩');
+    return;
+  }
+  try {
+    supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+      auth: {
+        persistSession: true,
+        autoRefreshToken: true,
+      },
+    });
+    const { data } = await supabaseClient.auth.getSession();
+    supabaseSession = data && data.session ? data.session : null;
+    if (supabaseSession) {
+      setSyncStatus(`로그인됨 · ${supabaseSession.user?.email || '계정'}`, 'good');
+      await attachSupabaseState();
+    } else {
+      setSyncStatus('로컬 저장 모드');
+    }
+    supabaseClient.auth.onAuthStateChange(async (_event, session) => {
+      supabaseSession = session || null;
+      if (session) {
+        setSyncStatus(`로그인됨 · ${session.user?.email || '계정'}`, 'good');
+        await attachSupabaseState();
+      } else {
+        detachSupabaseState();
+        setSyncStatus('로그아웃됨 · 로컬 저장 모드');
+      }
+    });
+  } catch (err) {
+    console.error(err);
+    setSyncStatus('Supabase 초기화 실패', 'bad');
+  }
+}
+
+function detachSupabaseState(){
+  supabaseReady = false;
+  if (remoteSaveTimer) {
+    clearTimeout(remoteSaveTimer);
+    remoteSaveTimer = 0;
+  }
+  if (supabaseClient && supabaseChannel) {
+    try {
+      supabaseClient.removeChannel(supabaseChannel);
+    } catch (e) {}
+  }
+  supabaseChannel = null;
+}
+
+async function attachSupabaseState(){
+  if (!supabaseClient || !supabaseSession) return;
+  detachSupabaseState();
+  try {
+    setSyncStatus('Supabase 동기화 중...');
+    const { data, error } = await supabaseClient
+      .from(SUPABASE_STATE_TABLE)
+      .select('data, updated_at')
+      .eq('id', SUPABASE_STATE_ID)
+      .maybeSingle();
+    if (error) throw error;
+
+    if (data && data.data) {
+      state = normalizeState(data.data);
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+      scheduleRecalc(true);
+      setSyncStatus('Supabase 불러오기 완료', 'good');
+    } else {
+      await pushSupabaseState(true);
+      setSyncStatus('Supabase 새 저장소 생성', 'good');
+    }
+
+    supabaseReady = true;
+    supabaseChannel = supabaseClient
+      .channel('app_state_default')
+      .on('postgres_changes', {
+        event: '*',
+        schema: 'public',
+        table: SUPABASE_STATE_TABLE,
+        filter: `id=eq.${SUPABASE_STATE_ID}`,
+      }, payload => {
+        const incoming = payload && payload.new && payload.new.data ? payload.new.data : null;
+        if (!incoming) return;
+        const next = normalizeState(incoming);
+        if (JSON.stringify(next) === JSON.stringify(state)) return;
+        state = next;
+        try {
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+        } catch (e) {}
+        scheduleRecalc(true);
+        setSyncStatus('Supabase 실시간 반영', 'good');
+      })
+      .subscribe(status => {
+        if (status === 'SUBSCRIBED') setSyncStatus('Supabase 실시간 연결됨', 'good');
+      });
+  } catch (err) {
+    console.error(err);
+    setSyncStatus('Supabase 불러오기 실패', 'bad');
+  }
+}
+
+function queueRemoteSave(){
+  if (!supabaseClient || !supabaseSession || !supabaseReady) return;
+  if (remoteSaveTimer) clearTimeout(remoteSaveTimer);
+  remoteSaveTimer = setTimeout(() => {
+    pushSupabaseState().catch(() => {});
+  }, 700);
+}
+
+async function pushSupabaseState(force = false){
+  if (!supabaseClient || !supabaseSession) {
+    if (!force) setSyncStatus('로그인 후 서버 저장 가능');
+    return;
+  }
+  try {
+    const payload = {
+      id: SUPABASE_STATE_ID,
+      data: state,
+      updated_at: new Date().toISOString(),
+    };
+    const { error } = await supabaseClient
+      .from(SUPABASE_STATE_TABLE)
+      .upsert(payload, { onConflict: 'id' });
+    if (error) throw error;
+    if (!force) setSyncStatus('Supabase 저장 완료', 'good');
+  } catch (err) {
+    console.error(err);
+    setSyncStatus('Supabase 저장 실패', 'bad');
+  }
+}
+
+async function pullSupabaseState(){
+  if (!supabaseClient || !supabaseSession) {
+    alert('먼저 로그인하세요.');
+    return;
+  }
+  await attachSupabaseState();
+  scheduleRecalc(true);
+}
+
+async function loginSupabase(){
+  if (!supabaseClient && supabaseAvailable()) {
+    await initSupabase();
+  }
+  if (!supabaseClient) {
+    alert('Supabase 초기화에 실패했습니다.');
+    return;
+  }
+  const email = (document.getElementById('authEmail')?.value || '').trim();
+  const password = document.getElementById('authPassword')?.value || '';
+  if (!email || !password) {
+    alert('이메일과 비밀번호를 입력하세요.');
+    return;
+  }
+  const { error } = await supabaseClient.auth.signInWithPassword({ email, password });
+  if (error) {
+    alert(error.message || '로그인에 실패했습니다.');
+    return;
+  }
+  const pw = document.getElementById('authPassword');
+  if (pw) pw.value = '';
+}
+
+async function logoutSupabase(){
+  if (!supabaseClient) return;
+  await supabaseClient.auth.signOut();
 }
 
 let state = loadSavedState();
@@ -1642,6 +1862,7 @@ function recalc(){
 document.getElementById('yearInput').addEventListener('input', e => updateYear(e.target.value));
 window.addEventListener('resize', () => scheduleChartRender());
 recalc();
+initSupabase();
 </script>
 </body>
 </html>
