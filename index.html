@@ -795,6 +795,13 @@ function fmtNumber(v){
   if (!isFinite(n) || v === '' || v === null || v === undefined) return '';
   return new Intl.NumberFormat('ko-KR').format(Math.round(n));
 }
+function parseNumericInput(v){
+  if (v === '' || v === null || v === undefined) return '';
+  const cleaned = String(v).replace(/,/g, '').trim();
+  if (!cleaned) return '';
+  const n = Number(cleaned);
+  return Number.isFinite(n) ? n : '';
+}
 function fmtPct(v){
   const n = Number(v);
   if (!isFinite(n) || v === '' || v === null || v === undefined) return '';
@@ -1154,7 +1161,7 @@ function updateCoachOption(idx, value){
 function updatePrice(idx, field, value){
   const row = state.priceTable[idx];
   if (!row) return;
-  row[field] = (field === 'price' || field === 'total' || field === 'unit' || field === 'days') ? (value === '' ? '' : Number(value)) : value;
+  row[field] = (field === 'price' || field === 'total' || field === 'unit' || field === 'days') ? parseNumericInput(value) : value;
   syncMemberValidityAll();
   const delay = ['product','refund','note'].includes(field) ? 3000 : 200;
   scheduleRecalc(false, delay);
@@ -1162,7 +1169,7 @@ function updatePrice(idx, field, value){
 function updateMember(idx, field, value){
   const row = state.members[idx];
   if (!row) return;
-  if (['total','used','payment'].includes(field)) row[field] = value === '' ? '' : Number(value);
+  if (['total','used','payment'].includes(field)) row[field] = parseNumericInput(value);
   else row[field] = value;
   if (['start','product'].includes(field)) syncMemberValidityAll();
   if (['start','product','total','used'].includes(field)) {
@@ -1175,14 +1182,14 @@ function updateMember(idx, field, value){
 function updateExpense(idx, field, value){
   const row = state.expenses[idx];
   if (!row) return;
-  row[field] = (field === 'amount') ? (value === '' ? '' : Number(value)) : value;
+  row[field] = (field === 'amount') ? parseNumericInput(value) : value;
   const delay = ['item','note'].includes(field) ? 3000 : 180;
   scheduleRecalc(false, delay);
 }
 function updateManualIncome(idx, field, value){
   const row = state.manualIncomes[idx];
   if (!row) return;
-  row[field] = (field === 'amount') ? (value === '' ? '' : Number(value)) : value;
+  row[field] = (field === 'amount') ? parseNumericInput(value) : value;
   const delay = ['item','note'].includes(field) ? 3000 : 180;
   scheduleRecalc(false, delay);
 }
@@ -1453,14 +1460,17 @@ function plainSelectHtml(options, current, onChange, extraClass=''){
 }
 function inputHtml(value, oninput, type='text', cls='', step=''){
   const v = value === null || value === undefined ? '' : value;
-  const stepAttr = step ? ` step="${step}"` : '';
-  const textLike = ['text','search','url','tel','email','password'].includes(type);
+  const isNumeric = type === 'number';
+  const renderType = isNumeric ? 'text' : type;
+  const inputMode = isNumeric ? ' inputmode="numeric"' : '';
+  const stepAttr = step && !isNumeric ? ` step="${step}"` : '';
+  const textLike = ['text','search','url','tel','email','password'].includes(renderType) || isNumeric;
   const textAttrs = textLike
     ? ' autocomplete="off" autocapitalize="off" spellcheck="false"'
     : '';
-  // 텍스트 입력도 일반적인 oninput으로 바로 상태에 반영하고, 화면 갱신만 조합 중에는 미룬다.
+  // 숫자 입력은 커서 튐을 줄이기 위해 text + inputmode로 받고, 상태는 즉시 반영한다.
   const commitEvt = 'oninput';
-  return `<input class="${cls}" type="${type}" value="${escapeHtml(v)}" ${commitEvt}="${oninput}"${stepAttr}${textAttrs} />`;
+  return `<input class="${cls}" type="${renderType}" value="${escapeHtml(v)}" ${commitEvt}="${oninput}"${inputMode}${stepAttr}${textAttrs} />`;
 }
 function dateHtml(value, oninput){
   return inputHtml(fmtDate(value), oninput, 'date');
