@@ -313,19 +313,23 @@
       </div>
     </div>
 
-    <div class="control">
+    <div class="control" id="supabaseControl">
       <label>Supabase 동기화</label>
       <div id="syncStatus" class="small" style="margin-bottom:8px;">로컬 저장 모드</div>
-      <div class="small" style="margin-bottom:8px;">로그인 후 입력값은 자동 저장됩니다.</div>
-      <div style="display:grid;gap:8px;min-width:280px">
+      <div class="small" id="authHint" style="margin-bottom:8px;">로그인 후 입력값은 자동 저장됩니다.</div>
+
+      <div id="authLoggedOut" style="display:grid;gap:8px;min-width:280px">
         <input id="authEmail" type="email" placeholder="로그인 이메일" autocomplete="username" />
         <input id="authPassword" type="password" placeholder="비밀번호" autocomplete="current-password" />
         <div style="display:flex;gap:8px;flex-wrap:wrap">
           <button class="btn primary" type="button" onclick="loginSupabase()">로그인</button>
-          <button class="btn" type="button" onclick="pullSupabaseState()">서버 불러오기</button>
-          <button class="btn" type="button" onclick="logoutSupabase()">로그아웃</button>
         </div>
-      </div></div>
+      </div>
+
+      <div id="authLoggedIn" style="display:none;align-items:center;gap:10px;flex-wrap:wrap">
+        <span id="authUserLabel" class="small" style="font-weight:700;"></span>
+        <button class="btn" type="button" onclick="logoutSupabase()">로그아웃</button>
+      </div>
     </div>
     <div class="kpis" id="kpiRow"></div>
     <div class="tabs" id="tabs"></div>
@@ -425,6 +429,16 @@ function setSyncStatus(text, tone='neutral'){
   el.style.color = tone === 'good' ? '#0f766e' : tone === 'bad' ? '#b91c1c' : '#6b7280';
 }
 
+function updateAuthUI(session){
+  const loggedOut = document.getElementById('authLoggedOut');
+  const loggedIn = document.getElementById('authLoggedIn');
+  const userLabel = document.getElementById('authUserLabel');
+  const email = session?.user?.email || '';
+  if (loggedOut) loggedOut.style.display = session ? 'none' : 'grid';
+  if (loggedIn) loggedIn.style.display = session ? 'flex' : 'none';
+  if (userLabel) userLabel.textContent = session ? `로그인됨 · ${email || '계정'}` : '';
+}
+
 function supabaseAvailable(){
   return typeof window !== 'undefined'
     && typeof window.supabase !== 'undefined'
@@ -447,19 +461,22 @@ async function initSupabase(){
     const { data } = await supabaseClient.auth.getSession();
     supabaseSession = data && data.session ? data.session : null;
     if (supabaseSession) {
-      setSyncStatus(`로그인 완료 · ${supabaseSession.user?.email || '계정'}`, 'good');
+      updateAuthUI(supabaseSession);
+      setSyncStatus(`로그인됨 · ${supabaseSession.user?.email || '계정'}`, 'good');
       await attachSupabaseState();
     } else {
+      updateAuthUI(null);
       setSyncStatus('로컬 저장 모드 · 자동 저장 비활성');
     }
     supabaseClient.auth.onAuthStateChange(async (_event, session) => {
       supabaseSession = session || null;
+      updateAuthUI(supabaseSession);
       if (session) {
-        setSyncStatus(`로그인 완료 · ${session.user?.email || '계정'}`, 'good');
+        setSyncStatus(`로그인됨 · ${session.user?.email || '계정'}`, 'good');
         await attachSupabaseState();
       } else {
         detachSupabaseState();
-        setSyncStatus('로그아웃됨 · 로컬 저장 모드');
+        setSyncStatus('로그아웃됨 · 최초 로그인 화면', 'neutral');
       }
     });
   } catch (err) {
@@ -591,7 +608,9 @@ async function loginSupabase(){
     alert(error.message || '로그인에 실패했습니다.');
     return;
   }
+  const emailInput = document.getElementById('authEmail');
   const pw = document.getElementById('authPassword');
+  if (emailInput) emailInput.value = '';
   if (pw) pw.value = '';
 }
 
