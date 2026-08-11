@@ -802,7 +802,7 @@ function isTextEditingElement(el){
   if (!el || !['INPUT','TEXTAREA'].includes(el.tagName)) return false;
   if (el.tagName === 'TEXTAREA') return true;
   const t = (el.type || '').toLowerCase();
-  return ['text','search','url','tel','email','password'].includes(t);
+  return ['text','search','url','tel','email','password','number','date'].includes(t);
 }
 
 function scheduleRecalc(force = false, delay = 650){
@@ -812,7 +812,6 @@ function scheduleRecalc(force = false, delay = 650){
   if ((isComposing || editingText) && !force) {
     if (isComposing) pendingDuringComposition = true;
     if (editingText) pendingTextRender = true;
-    saveState();
     return;
   }
   pendingDuringComposition = false;
@@ -836,8 +835,7 @@ if (typeof document !== 'undefined') {
   }, true);
   document.addEventListener('blur', (e) => {
     if (isTextEditingElement(e.target) && pendingTextRender) {
-      pendingTextRender = false;
-      scheduleRecalc(true);
+      commitInputEdit();
     }
   }, true);
 }
@@ -1204,57 +1202,47 @@ function memberMatchesFilters(m, idx, d, regType, filters){
 function updateYear(v){
   const n = parseInt(v,10);
   if (!isNaN(n)) state.year = n;
-  scheduleRecalc(true);
+  markInputDirty();
+}
+function markInputDirty(){
+  pendingTextRender = true;
 }
 function updateCode(col, idx, value){
   const keyMap = {0:'paymentMethods', 1:'expenseCategories', 2:'incomeTypes', 3:'memberTypes'};
   const key = keyMap[col];
   if (!key) return;
   state[key][idx] = value;
-  scheduleRecalc(false, 900);
+  markInputDirty();
 }
 function updateCoachOption(idx, value){
   if (!state.instructorOptions[idx] && value === '') return;
   state.instructorOptions[idx] = value;
-  if ((state.selectedCoachChart || '') && !coachOptions().includes(state.selectedCoachChart)) {
-    state.selectedCoachChart = coachOptions()[0] || '';
-  }
-  scheduleRecalc(false, 900);
+  markInputDirty();
 }
 function updatePrice(idx, field, value){
   const row = state.priceTable[idx];
   if (!row) return;
   row[field] = (field === 'price' || field === 'total' || field === 'unit' || field === 'days') ? parseNumericInput(value) : value;
-  syncMemberValidityAll();
-  const delay = ['product','refund','note'].includes(field) ? 3000 : 200;
-  scheduleRecalc(false, delay);
+  markInputDirty();
 }
 function updateMember(idx, field, value){
   const row = state.members[idx];
   if (!row) return;
   if (['total','used','payment'].includes(field)) row[field] = parseNumericInput(value);
   else row[field] = value;
-  if (['start','product'].includes(field)) syncMemberValidityAll();
-  if (['start','product','total','used'].includes(field)) {
-    scheduleRecalc(true);
-    return;
-  }
-  const delay = ['name','phone'].includes(field) ? 120 : 180;
-  scheduleRecalc(false, delay);
+  markInputDirty();
 }
 function updateExpense(idx, field, value){
   const row = state.expenses[idx];
   if (!row) return;
   row[field] = (field === 'amount') ? parseNumericInput(value) : value;
-  const delay = ['item','note'].includes(field) ? 3000 : 180;
-  scheduleRecalc(false, delay);
+  markInputDirty();
 }
 function updateManualIncome(idx, field, value){
   const row = state.manualIncomes[idx];
   if (!row) return;
   row[field] = (field === 'amount') ? parseNumericInput(value) : value;
-  const delay = ['item','note'].includes(field) ? 3000 : 180;
-  scheduleRecalc(false, delay);
+  markInputDirty();
 }
 function addRow(kind){
   if (kind === 'member'){
@@ -1527,13 +1515,19 @@ function inputHtml(value, oninput, type='text', cls='', step=''){
   const renderType = isNumeric ? 'text' : type;
   const inputMode = isNumeric ? ' inputmode="numeric"' : '';
   const stepAttr = step && !isNumeric ? ` step="${step}"` : '';
-  const textLike = ['text','search','url','tel','email','password'].includes(renderType) || isNumeric;
+  const textLike = ['text','search','url','tel','email','password','date'].includes(renderType) || isNumeric;
   const textAttrs = textLike
     ? ' autocomplete="off" autocapitalize="off" spellcheck="false"'
     : '';
-  // 숫자 입력은 커서 튐을 줄이기 위해 text + inputmode로 받고, 상태는 즉시 반영한다.
-  const commitEvt = 'oninput';
-  return `<input class="${cls}" type="${renderType}" value="${escapeHtml(v)}" ${commitEvt}="${oninput}"${inputMode}${stepAttr}${textAttrs} />`;
+  // 입력 중에는 DOM을 다시 그리지 않고 값만 상태에 반영한다. 포커스가 빠질 때 한 번만 저장/재계산한다.
+  return `<input class="${cls}" type="${renderType}" value="${escapeHtml(v)}" oninput="${oninput}" onblur="commitInputEdit()"${inputMode}${stepAttr}${textAttrs} />`;
+}
+function commitInputEdit(){
+  if (!pendingTextRender) return;
+  pendingTextRender = false;
+  syncMemberValidityAll();
+  saveState();
+  setTimeout(() => scheduleRecalc(true), 0);
 }
 function dateHtml(value, oninput){
   return inputHtml(fmtDate(value), oninput, 'date');
