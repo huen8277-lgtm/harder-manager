@@ -1298,11 +1298,14 @@ function selectedCoachList(){
 function selectedCoach(){
   return selectedCoachList()[0] || '';
 }
-function updateSelectedCoachChart(value){
-  const current = selectedCoachList();
-  // 담당 강사 체크박스는 항상 1개만 선택되도록 단일 선택으로 동작합니다.
-  // 기존 선택과 동일한 항목을 다시 클릭하면 선택을 해제하지 않고 그대로 유지합니다.
-  state.selectedCoachChart = current.includes(value) ? [value] : [value];
+function updateSelectedCoachChart(value, inputEl){
+  const options = coachChartOptions();
+  if (!options.includes(value)) return;
+  // 담당 강사 체크박스는 항상 1개만 선택되도록 즉시 UI와 상태를 동시에 동기화
+  document.querySelectorAll('.coach-toggles input[type=\"checkbox\"]').forEach(cb => {
+    cb.checked = (cb === inputEl);
+  });
+  state.selectedCoachChart = [value];
   scheduleRecalc(true);
 }
 
@@ -1520,9 +1523,11 @@ function getSeriesValue(m, key){
   return m.exp[key] || 0;
 }
 function toggleSeries(kind, key){
-  const s = chartSeries[kind].find(x => x.key === key);
-  if (!s) return;
-  s.enabled = !s.enabled;
+  const list = chartSeries[kind] || [];
+  const target = list.find(x => x.key === key);
+  if (!target) return;
+  // 전체 금액 변화 그래프는 여러 항목을 동시에 선택할 수 있습니다.
+  target.enabled = !target.enabled;
   renderCharts();
 }
 function buildToggles(kind, containerId){
@@ -1645,33 +1650,44 @@ function renderCharts(){
   renderCoachStatsAndTable('monthly', selected, labels, y);
 }
 function renderAmountStatsAndTable(prefix, months, y){
-  const revenueMonths = months.filter(m => Number(m.rev.totalRevenue) > 0);
-  const avgRevenue = revenueMonths.length ? revenueMonths.reduce((s,m)=>s + m.rev.totalRevenue,0) / revenueMonths.length : 0;
-  const avgProfit = months.length ? months.reduce((s,m)=>s + m.profit,0) / months.length : 0;
+  const enabled = chartSeries.amount.filter(s => s.enabled);
   const statsEl = document.getElementById(`${prefix}AmountStats`);
   const tableEl = document.getElementById(`${prefix}AmountTable`);
+  if (!enabled.length){
+    if (statsEl) statsEl.innerHTML = '<div class="small">표시할 항목을 선택하세요.</div>';
+    if (tableEl) tableEl.innerHTML = '<div class="small" style="padding:12px;">표시할 항목을 선택하세요.</div>';
+    return;
+  }
   if (statsEl){
-    statsEl.innerHTML = `
-      <div class="chart-stat"><span>월평균 총매출</span><strong>${fmtNumber(avgRevenue)}원</strong></div>
-      <div class="chart-stat"><span>월평균 영업이익</span><strong>${signedNumberHtml(avgProfit)}원</strong></div>
-    `;
+    statsEl.innerHTML = enabled.map(series => {
+      const values = months.map(m => getSeriesValue(m, series.key));
+      const activeValues = series.key === 'margin' ? values.filter(v => Number(v) !== 0) : values.filter(v => Number(v) > 0);
+      const avgValue = activeValues.length ? activeValues.reduce((sum,v)=>sum + Number(v),0) / activeValues.length : 0;
+      const avgText = series.key === 'margin' ? fmtPct(avgValue / 100) : fmtNumber(avgValue) + '원';
+      return `<div class="chart-stat"><span>${escapeHtml(series.label)} 월평균</span><strong>${avgText}</strong></div>`;
+    }).join('');
   }
   if (tableEl){
-    tableEl.innerHTML = `
-      <table>
-        <thead><tr><th>월</th><th>총매출</th><th>영업이익</th></tr></thead>
-        <tbody>${months.map((m,i)=>`<tr><td>${monthLabel(y,i)}</td><td class="currency">${plainNumberHtml(m.rev.totalRevenue)}</td><td class="currency">${signedNumberHtml(m.profit)}</td></tr>`).join('')}</tbody>
-      </table>
-    `;
+    const head = enabled.map(series => `<th>${escapeHtml(series.label)}</th>`).join('');
+    const rows = months.map((m,i) => {
+      const cells = enabled.map(series => {
+        const v = getSeriesValue(m, series.key);
+        const valueHtml = series.key === 'profit' ? signedNumberHtml(v) : series.key === 'margin' ? signedPctHtml(m.margin) : plainNumberHtml(v);
+        return `<td class="currency">${valueHtml}</td>`;
+      }).join('');
+      return `<tr><th>${monthLabel(y,i)}</th>${cells}</tr>`;
+    }).join('');
+    tableEl.innerHTML = `<table><thead><tr><th>월</th>${head}</tr></thead><tbody>${rows}</tbody></table>`;
   }
 }
+
 function renderCoachToggles(source){
   const el = document.getElementById(`${source}CoachToggles`);
   if (!el) return;
   const selected = selectedCoachList();
   const options = coachChartOptions();
   el.innerHTML = options.map(coach => `
-    <label class="series-toggle"><input type="checkbox" ${selected.includes(coach) ? 'checked' : ''} onchange="updateSelectedCoachChart(${JSON.stringify(coach)})">${escapeHtml(coach)}</label>
+    <label class="series-toggle"><input type="checkbox" ${selected.includes(coach) ? 'checked' : ''} onchange="updateSelectedCoachChart(${JSON.stringify(coach)}, this)">${escapeHtml(coach)}</label>
   `).join('');
 }
 function renderCoachStatsAndTable(source, selected, labels, y){
