@@ -317,9 +317,9 @@
   .chart-grid{display:grid;gap:14px;grid-template-columns:repeat(2,minmax(0,1fr));}
   @media (max-width: 1100px){.chart-grid{grid-template-columns:1fr;}}
   .chart-card{background:#fff;border:1px solid var(--line);border-radius:16px;padding:14px;}
-  .chart-head{display:flex;justify-content:space-between;gap:12px;align-items:center;flex-wrap:wrap;margin-bottom:10px;}
+  .chart-head{display:block;margin-bottom:10px;}
   .chart-head h3{margin:0;font-size:16px;}
-  .series-toggles{display:flex;gap:8px;flex-wrap:wrap}
+  .series-toggles{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px;}
   .coach-inline{display:flex;align-items:center;gap:8px;flex-wrap:nowrap;white-space:nowrap;max-width:100%;}
   .coach-inline .coach-label{font-weight:600;color:#111827;}
   .coach-inline .coach-rate{font-weight:700;color:#374151;}
@@ -486,7 +486,6 @@
   .chart-stat span{font-size:11px;color:var(--muted);font-weight:700;}
   .chart-stat strong{font-size:14px;}
   .chart-month-table{margin-top:10px;}
-  .coach-toggles{justify-content:flex-end;max-width:100%;}
   .sortable-th{cursor:pointer;user-select:none;}
   .sortable-th:hover{background:#eef5ff;}
   .sort-indicator{font-size:10px;color:#64748b;margin-left:4px;}
@@ -1718,11 +1717,11 @@ function renderSummaryCharts(source='overview'){
         </div>
         <div class="chart-card">
           <div class="chart-head">
-            <div style="min-width:0;">
+            <div>
               <h3>담당 강사별 매출 그래프</h3>
               <div class="legend-note">코드값에 등록된 강사를 체크하면 선택한 강사만 그래프와 표에 표시됩니다.</div>
             </div>
-            <div class="coach-toggles series-toggles" id="${source}CoachToggles"></div>
+            <div class="series-toggles" id="${source}CoachToggles"></div>
           </div>
           <div class="chart-wrap"><canvas id="${source}CoachChart" class="chart-canvas"></canvas></div>
           <div class="chart-stats" id="${source}CoachStats"></div>
