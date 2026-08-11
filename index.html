@@ -486,7 +486,7 @@
   .chart-stat span{font-size:11px;color:var(--muted);font-weight:700;}
   .chart-stat strong{font-size:14px;}
   .chart-month-table{margin-top:10px;}
-  .coach-toggles{justify-content:flex-end;}
+  .coach-toggles{justify-content:flex-end;max-width:100%;}
   .sortable-th{cursor:pointer;user-select:none;}
   .sortable-th:hover{background:#eef5ff;}
   .sort-indicator{font-size:10px;color:#64748b;margin-left:4px;}
@@ -550,7 +550,7 @@
 </div>
 
 <script>
-const initialState = {"year": 2026, "priceTable": [{"product": "10회권", "total": 10, "price": 300000, "unit": 30000, "days": 90, "refund": "규정에 따라", "note": "예시"}, {"product": "20회권", "total": 20, "price": 560000, "unit": 28000, "days": 150, "refund": "규정에 따라", "note": "예시"}, {"product": "30회권", "total": 30, "price": 780000, "unit": 26000, "days": 210, "refund": "규정에 따라", "note": "예시"}], "paymentMethods": ["현금", "계좌이체", "카드", "간편결제", "기타"], "expenseCategories": ["임대료", "관리비", "인건비", "광고비", "소모품비", "수선비", "전기/수도/가스", "세금/수수료", "기타"], "incomeTypes": ["회원권", "개인레슨", "이벤트", "환불", "기타"], "members": [{"name": "김하늘", "phone": "010-1000-0001", "start": "2026-01-05", "end": "2026-04-04", "product": "10회권", "total": 10, "used": 10, "coach": "강사A", "regType": "신규"}], "expenses": [{"date": "2026-01-01", "category": "임대료", "item": "임대료", "amount": 1100000, "method": "계좌이체", "note": "월세"}], "manualIncomes": [{"date": "2026-01-15", "item": "개인레슨", "amount": 50000, "method": "현금", "coach": "강사A", "type": "개인레슨", "note": "예시"}], "instructorOptions": ["강사A", "강사B", "강사C"], "memberTypes": ["신규", "재등록"], "selectedCoachChart": ["강사A"], "memberFilters": {"coach": "전체", "status": "전체", "product": "전체", "regType": "전체"}, "memberSort": {"key": "name", "dir": "asc"}};
+const initialState = {"year": 2026, "priceTable": [{"product": "10회권", "total": 10, "price": 300000, "unit": 30000, "days": 90, "refund": "규정에 따라", "note": "예시"}, {"product": "20회권", "total": 20, "price": 560000, "unit": 28000, "days": 150, "refund": "규정에 따라", "note": "예시"}, {"product": "30회권", "total": 30, "price": 780000, "unit": 26000, "days": 210, "refund": "규정에 따라", "note": "예시"}], "paymentMethods": ["현금", "계좌이체", "카드", "간편결제", "기타"], "expenseCategories": ["임대료", "관리비", "인건비", "광고비", "소모품비", "수선비", "전기/수도/가스", "세금/수수료", "기타"], "incomeTypes": ["회원권", "개인레슨", "이벤트", "환불", "기타"], "members": [{"name": "김하늘", "phone": "010-1000-0001", "start": "2026-01-05", "end": "2026-04-04", "product": "10회권", "total": 10, "used": 10, "coach": "강사A", "regType": "신규"}], "expenses": [{"date": "2026-01-01", "category": "임대료", "item": "임대료", "amount": 1100000, "method": "계좌이체", "note": "월세"}], "manualIncomes": [{"date": "2026-01-15", "item": "개인레슨", "amount": 50000, "method": "현금", "coach": "강사A", "type": "개인레슨", "note": "예시"}], "instructorOptions": ["박예린", "강사A", "강사B", "강사C"], "memberTypes": ["신규", "재등록"], "selectedCoachChart": ["박예린"], "memberFilters": {"coach": "전체", "status": "전체", "product": "전체", "regType": "전체"}, "memberSort": {"key": "id", "dir": "asc"}};
 
 const STORAGE_KEY = 'hader_center_management_state_v1';
 
@@ -815,8 +815,11 @@ async function logoutSupabase(){
 }
 
 let state = loadSavedState();
-if (!state.memberSort || typeof state.memberSort !== 'object') state.memberSort = {key:'name', dir:'asc'};
+if (!state.memberSort || typeof state.memberSort !== 'object') state.memberSort = {key:'id', dir:'asc'};
+if (!state.memberSortInitializedV2) { state.memberSort = {key:'id', dir:'asc'}; state.memberSortInitializedV2 = true; }
 if (!Array.isArray(state.selectedCoachChart)) state.selectedCoachChart = state.selectedCoachChart ? [state.selectedCoachChart] : [];
+if (!Array.isArray(state.instructorOptions)) state.instructorOptions = [];
+if (!state.instructorOptions.includes('박예린')) state.instructorOptions.unshift('박예린');
 let memberGroupSeq = 0;
 function makeMemberGroupId(){
   memberGroupSeq += 1;
@@ -1287,7 +1290,9 @@ function coachChartOptions(){
 function selectedCoachList(){
   const options = coachChartOptions();
   const raw = Array.isArray(state.selectedCoachChart) ? state.selectedCoachChart : (state.selectedCoachChart ? [state.selectedCoachChart] : []);
-  const valid = [...new Set(raw.filter(v => options.includes(v)))];
+  let valid = [...new Set(raw.filter(v => options.includes(v)))];
+  if (!valid.length && options.includes('박예린')) valid = ['박예린'];
+  if (!valid.length && options.length) valid = [options[0]];
   state.selectedCoachChart = valid;
   return valid;
 }
@@ -1638,7 +1643,8 @@ function renderCharts(){
   renderCoachStatsAndTable('monthly', selected, labels, y);
 }
 function renderAmountStatsAndTable(prefix, months, y){
-  const avgRevenue = months.length ? months.reduce((s,m)=>s + m.rev.totalRevenue,0) / months.length : 0;
+  const revenueMonths = months.filter(m => Number(m.rev.totalRevenue) > 0);
+  const avgRevenue = revenueMonths.length ? revenueMonths.reduce((s,m)=>s + m.rev.totalRevenue,0) / revenueMonths.length : 0;
   const avgProfit = months.length ? months.reduce((s,m)=>s + m.profit,0) / months.length : 0;
   const statsEl = document.getElementById(`${prefix}AmountStats`);
   const tableEl = document.getElementById(`${prefix}AmountTable`);
@@ -1895,7 +1901,7 @@ function renderPrices(){
   `;
 }
 function getMemberSort(){
-  const base = {key:'name', dir:'asc'};
+  const base = {key:'id', dir:'asc'};
   const cur = state.memberSort && typeof state.memberSort === 'object' ? state.memberSort : {};
   return {...base, ...cur};
 }
@@ -2120,19 +2126,29 @@ function renderSales(){
   const validData = data.filter(r => r.product);
   const totalCount = validData.reduce((a,r)=>a+r.count,0);
   const totalSales = validData.reduce((a,r)=>a+r.totalSales,0);
-  const sorted = validData.map(r => ({
-    ...r,
-    countShare: totalCount ? r.count / totalCount : 0,
-    salesShare: totalSales ? r.totalSales / totalSales : 0,
-    type: totalCount && totalSales ? (r.countShare > r.salesShare + 0.02 ? '고판매형' : (r.salesShare > r.countShare + 0.02 ? '고단가 매출형' : '균형형')) : '균형형'
-  }));
+  const overallAvg = totalCount ? totalSales / totalCount : 0;
+  const analyzed = validData.map(r => {
+    const countShare = totalCount ? r.count / totalCount : 0;
+    const salesShare = totalSales ? r.totalSales / totalSales : 0;
+    const shareGap = countShare - salesShare;
+    let type = '균형형';
+    if (shareGap > 0.005) type = '고판매형';
+    else if (shareGap < -0.005) type = '고단가 매출형';
+    return {...r, countShare, salesShare, shareGap, type, avgVsOverall: overallAvg ? r.avg / overallAvg : 0};
+  });
   const order = window.salesSortState || {key:'count', dir:'desc'};
   const getVal = (r,key) => key === 'count' ? r.count : key === 'countShare' ? r.countShare : key === 'totalSales' ? r.totalSales : key === 'salesShare' ? r.salesShare : key === 'avg' ? r.avg : r.unit;
-  sorted.sort((a,b) => { const av=getVal(a,order.key), bv=getVal(b,order.key); const cmp=(typeof av==='string' ? av.localeCompare(bv,'ko') : av-bv); return order.dir==='asc'?cmp:-cmp; });
-  const salesTop = [...validData].sort((a,b)=>b.count-a.count)[0];
-  const revenueTop = [...validData].sort((a,b)=>b.totalSales-a.totalSales)[0];
-  const highVolume = sorted.find(r=>r.type==='고판매형');
-  const highValue = sorted.find(r=>r.type==='고단가 매출형');
+  const sorted = analyzed.slice().sort((a,b) => {
+    const av=getVal(a,order.key), bv=getVal(b,order.key);
+    const cmp=(typeof av==='string' ? av.localeCompare(bv,'ko') : av-bv);
+    return order.dir==='asc'?cmp:-cmp;
+  });
+  const salesTop = [...analyzed].sort((a,b)=>b.count-a.count)[0];
+  const revenueTop = [...analyzed].sort((a,b)=>b.totalSales-a.totalSales)[0];
+  const volumeTop = [...analyzed].sort((a,b)=>b.shareGap-a.shareGap)[0];
+  const valueTop = [...analyzed].sort((a,b)=>a.shareGap-b.shareGap)[0];
+  const highVolume = volumeTop && volumeTop.shareGap > 0.005 ? volumeTop : null;
+  const highValue = valueTop && valueTop.shareGap < -0.005 ? valueTop : null;
   const sortBtn = (key,label) => {
     const active = order.key === key;
     const arrow = active ? (order.dir==='asc' ? '▲' : '▼') : '';
@@ -2140,7 +2156,7 @@ function renderSales(){
   };
   const rows = sorted.map(r => `
     <tr>
-      <td>${escapeHtml(r.product)}</td>
+      <td><strong>${escapeHtml(r.product)}</strong></td>
       <td class="currency">${plainNumberHtml(r.count)}</td>
       <td class="currency">${plainPctHtml(r.countShare)}</td>
       <td class="currency">${plainNumberHtml(r.totalSales)}</td>
@@ -2154,21 +2170,24 @@ function renderSales(){
       <div class="section-title">
         <div>
           <h2>횟수권별매출</h2>
-          <div class="note">상품별 판매량과 매출 구조를 비교해 어떤 상품이 많이 팔리고 어떤 상품이 매출을 주도하는지 확인합니다.</div>
+          <div class="note">판매건수와 매출비중을 비교해 고판매형과 고단가 매출형을 구분합니다.</div>
         </div>
       </div>
       <div class="member-summary-strip">
         <div><span>판매 1위</span><strong>${escapeHtml(salesTop?.product || '-')}</strong></div>
         <div><span>매출 1위</span><strong>${escapeHtml(revenueTop?.product || '-')}</strong></div>
-        <div><span>고판매형</span><strong>${escapeHtml(highVolume?.product || '-')}</strong></div>
-        <div><span>고단가 매출형</span><strong>${escapeHtml(highValue?.product || '-')}</strong></div>
+        <div><span>고판매형 대표</span><strong>${escapeHtml(highVolume?.product || '해당 없음')}</strong></div>
+        <div><span>고단가 매출형 대표</span><strong>${escapeHtml(highValue?.product || '해당 없음')}</strong></div>
+      </div>
+      <div class="muted-box" style="margin-bottom:12px;">
+        <strong>판매형태 판정 기준</strong> · 판매비중이 매출비중보다 높으면 <b>고판매형</b>, 매출비중이 판매비중보다 높으면 <b>고단가 매출형</b>으로 분류하며 차이가 크지 않으면 <b>균형형</b>으로 표시합니다.
       </div>
       <div class="table-wrap">
         <table>
           <thead><tr>
             <th>상품명</th>${sortBtn('count','판매건수')}${sortBtn('countShare','판매비중')}${sortBtn('totalSales','총매출')}${sortBtn('salesShare','매출비중')}${sortBtn('avg','평균판매가')}${sortBtn('unit','회당가격')}<th>판매형태</th>
           </tr></thead>
-          <tbody>${rows}</tbody>
+          <tbody>${rows || `<tr><td colspan="8" class="center" style="padding:18px;color:var(--muted);">판매 데이터가 없습니다.</td></tr>`}</tbody>
         </table>
       </div>
     </div>
