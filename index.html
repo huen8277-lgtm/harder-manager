@@ -324,6 +324,7 @@
   .coach-inline .coach-label{font-weight:600;color:#111827;}
   .coach-inline .coach-rate{font-weight:700;color:#374151;}
   .coach-inline select{min-width:150px;max-width:180px;}
+  .coach-toggles{display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end;}
   .series-toggle{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--line);background:#fff;border-radius:999px;padding:6px 10px;font-size:12px;font-weight:700;cursor:pointer;user-select:none;}
   .series-toggle input{margin:0}
   .chart-wrap{position:relative;width:100%;height:300px;border:1px solid var(--line2);border-radius:14px;background:linear-gradient(180deg,#ffffff 0%,#fbfdff 100%);overflow:hidden;}
@@ -550,7 +551,7 @@
 </div>
 
 <script>
-const initialState = {"year": 2026, "priceTable": [{"product": "10회권", "total": 10, "price": 300000, "unit": 30000, "days": 90, "refund": "규정에 따라", "note": "예시"}, {"product": "20회권", "total": 20, "price": 560000, "unit": 28000, "days": 150, "refund": "규정에 따라", "note": "예시"}, {"product": "30회권", "total": 30, "price": 780000, "unit": 26000, "days": 210, "refund": "규정에 따라", "note": "예시"}], "paymentMethods": ["현금", "계좌이체", "카드", "간편결제", "기타"], "expenseCategories": ["임대료", "관리비", "인건비", "광고비", "소모품비", "수선비", "전기/수도/가스", "세금/수수료", "기타"], "incomeTypes": ["회원권", "개인레슨", "이벤트", "환불", "기타"], "members": [{"name": "김하늘", "phone": "010-1000-0001", "start": "2026-01-05", "end": "2026-04-04", "product": "10회권", "total": 10, "used": 10, "coach": "강사A", "regType": "신규"}], "expenses": [{"date": "2026-01-01", "category": "임대료", "item": "임대료", "amount": 1100000, "method": "계좌이체", "note": "월세"}], "manualIncomes": [{"date": "2026-01-15", "item": "개인레슨", "amount": 50000, "method": "현금", "coach": "강사A", "type": "개인레슨", "note": "예시"}], "instructorOptions": ["강사A", "강사B", "강사C"], "memberTypes": ["신규", "재등록"], "selectedCoachChart": "강사A", "memberFilters": {"coach": "전체", "status": "전체", "product": "전체", "regType": "전체"}};
+const initialState = {"year": 2026, "priceTable": [{"product": "10회권", "total": 10, "price": 300000, "unit": 30000, "days": 90, "refund": "규정에 따라", "note": "예시"}, {"product": "20회권", "total": 20, "price": 560000, "unit": 28000, "days": 150, "refund": "규정에 따라", "note": "예시"}, {"product": "30회권", "total": 30, "price": 780000, "unit": 26000, "days": 210, "refund": "규정에 따라", "note": "예시"}], "paymentMethods": ["현금", "계좌이체", "카드", "간편결제", "기타"], "expenseCategories": ["임대료", "관리비", "인건비", "광고비", "소모품비", "수선비", "전기/수도/가스", "세금/수수료", "기타"], "incomeTypes": ["회원권", "개인레슨", "이벤트", "환불", "기타"], "members": [{"name": "김하늘", "phone": "010-1000-0001", "start": "2026-01-05", "end": "2026-04-04", "product": "10회권", "total": 10, "used": 10, "coach": "강사A", "regType": "신규"}], "expenses": [{"date": "2026-01-01", "category": "임대료", "item": "임대료", "amount": 1100000, "method": "계좌이체", "note": "월세"}], "manualIncomes": [{"date": "2026-01-15", "item": "개인레슨", "amount": 50000, "method": "현금", "coach": "강사A", "type": "개인레슨", "note": "예시"}], "instructorOptions": ["강사A", "강사B", "강사C"], "memberTypes": ["신규", "재등록"], "selectedCoachChart": ["강사A"], "memberFilters": {"coach": "전체", "status": "전체", "product": "전체", "regType": "전체"}};
 
 const STORAGE_KEY = 'hader_center_management_state_v1';
 
@@ -1279,14 +1280,23 @@ function coachRevenueByMonth(year, coach){
     return memberRevenue + manualRevenue;
   });
 }
-function selectedCoach(){
+function selectedCoachList(){
   const options = coachOptions();
-  const current = (state.selectedCoachChart || '').trim();
-  if (current && options.includes(current)) return current;
-  return options[0] || '';
+  let current = Array.isArray(state.selectedCoachChart) ? state.selectedCoachChart : (state.selectedCoachChart ? [state.selectedCoachChart] : []);
+  current = current.filter(v => options.includes(v));
+  if (!current.length && options.length) current = [options[0]];
+  state.selectedCoachChart = current;
+  return current;
+}
+function selectedCoach(){
+  return selectedCoachList()[0] || '';
 }
 function updateSelectedCoachChart(value){
-  state.selectedCoachChart = value;
+  const options = coachOptions();
+  let current = selectedCoachList();
+  current = current.includes(value) ? current.filter(v => v !== value) : current.concat(value);
+  if (!current.length && options.length) current = [options[0]];
+  state.selectedCoachChart = [...new Set(current.filter(v => options.includes(v)))];
   scheduleRecalc(false, 250);
 }
 function getMemberFilters(){
@@ -1602,19 +1612,19 @@ function renderCharts(){
     drawChart(document.getElementById(t.canvasId), amountSeries, labels, 'amount');
     renderAmountStats(t.amountId.replace('Toggles',''));
   });
-  const selected = selectedCoach();
-  const coachData = selected ? coachMonthlySeries(y, selected) : Array(12).fill(0);
-  const coachSeries = [{
-    key:'coachRevenue',
-    label:selected ? `${selected} 매출` : '강사 매출',
-    color:'#7c3aed',
+  const selected = selectedCoachList();
+  const coachColors = ['#7c3aed','#0f766e','#dc2626','#b45309','#2563eb','#db2777','#059669','#9333ea'];
+  const coachSeries = selected.map((coach, idx) => ({
+    key:`coachRevenue_${idx}`,
+    label:`${coach} 매출`,
+    color:coachColors[idx % coachColors.length],
     enabled:true,
-    data: coachData
-  }];
+    data:coachMonthlySeries(y, coach)
+  }));
   drawChart(document.getElementById('overviewCoachChart'), coachSeries, labels, 'amount');
   drawChart(document.getElementById('monthlyCoachChart'), coachSeries, labels, 'amount');
-  renderCoachStatsAndTable('overview', selected, coachData, labels);
-  renderCoachStatsAndTable('monthly', selected, coachData, labels);
+  renderCoachStatsAndTable('overview', selected, labels);
+  renderCoachStatsAndTable('monthly', selected, labels);
 }
 
 function renderAmountStats(prefix){
@@ -1642,89 +1652,38 @@ function renderAmountStats(prefix){
 
 function labelsFromYear(y,i){ return monthLabel(y,i); }
 
-function renderCoachStatsAndTable(prefix, coach, data, labels){
-  const statsEl = document.getElementById(`${prefix}CoachStats`);
-  const tableEl = document.getElementById(`${prefix}CoachTable`);
-  const avg = data.length ? data.reduce((a,b)=>a+b,0) / data.length : 0;
+function renderCoachToggles(source){
+  const el = document.getElementById(`${source}CoachToggles`);
+  if (!el) return;
+  const selected = selectedCoachList();
+  const options = coachOptions();
+  el.innerHTML = options.map((coach, idx) => {
+    const checked = selected.includes(coach);
+    return `<label class="series-toggle"><input type="checkbox" ${checked?'checked':''} onchange="updateSelectedCoachChart(${JSON.stringify(coach)})">${escapeHtml(coach)}</label>`;
+  }).join('');
+}
+
+function renderCoachStatsAndTable(source, selected, labels){
+  const y = Number(state.year) || new Date().getFullYear();
+  const statsEl = document.getElementById(`${source}CoachStats`);
+  const tableEl = document.getElementById(`${source}CoachTable`);
+  const totals = selected.map(coach => ({coach, data:coachMonthlySeries(y, coach)}));
   if (statsEl){
-    statsEl.innerHTML = `
-      <div class="chart-stat"><span>선택 강사</span><strong>${escapeHtml(coach || '없음')}</strong></div>
-      <div class="chart-stat"><span>월평균 매출</span><strong>${fmtNumber(avg)}원</strong></div>
-      <div class="chart-stat"><span>연간 매출</span><strong>${fmtNumber(data.reduce((a,b)=>a+b,0))}원</strong></div>
-    `;
+    const items = totals.map(x => {
+      const total = x.data.reduce((a,b)=>a+b,0);
+      const avg = x.data.length ? total / x.data.length : 0;
+      return `<div class="chart-stat"><span>${escapeHtml(x.coach)} 월평균</span><strong>${fmtNumber(avg)}원</strong></div>`;
+    }).join('');
+    statsEl.innerHTML = items || '<div class="small">강사를 선택하세요.</div>';
   }
   if (tableEl){
-    tableEl.innerHTML = `
-      <table>
-        <thead><tr><th>월</th><th>${escapeHtml(coach || '강사')} 매출</th></tr></thead>
-        <tbody>${data.map((v,i)=>`<tr><td>${labels[i]}</td><td class="currency">${plainNumberHtml(v)}</td></tr>`).join('')}</tbody>
-      </table>
-    `;
+    tableEl.innerHTML = `<table><thead><tr><th>월</th>${selected.map(c=>`<th>${escapeHtml(c)} 매출</th>`).join('')}</tr></thead><tbody>${labels.map((lab,i)=>`<tr><th>${escapeHtml(lab)}</th>${totals.map(x=>`<td class="currency">${plainNumberHtml(x.data[i])}</td>`).join('')}</tr>`).join('')}</tbody></table>`;
   }
 }
 
-function codeValueList(kind, current){
-  const list = {
-    payment: [...new Set((state.paymentMethods || []).filter(Boolean).concat([current||'']))],
-    expense: [...new Set((state.expenseCategories || []).filter(Boolean).concat([current||'']))],
-    income: [...new Set((state.incomeTypes || []).filter(Boolean).concat([current||'']))],
-    memberType: [...new Set((state.memberTypes || []).filter(Boolean).concat([current||'']))],
-    product: [...new Set(state.priceTable.map(x=>x.product).filter(Boolean).concat([current||'']))],
-    coach: [...new Set((state.instructorOptions || []).filter(Boolean).concat([current||'']))],
-  }[kind].filter(Boolean);
-  return [...new Set(list)];
-}
-function selectHtml(kind, current, onChange, extraClass=''){
-  const options = codeValueList(kind, current);
-  const emptyOption = `<option value=""></option>`;
-  return `<select class="${extraClass}" onchange="${onChange}">
-    ${emptyOption}
-    ${options.map(v => `<option value="${escapeHtml(v)}" ${String(v)===String(current)?'selected':''}>${escapeHtml(v)}</option>`).join('')}
-  </select>`;
-}
-function plainSelectHtml(options, current, onChange, extraClass=''){
-  return `<select class="${extraClass}" onchange="${onChange}">
-    ${options.map(v => `<option value="${escapeHtml(v)}" ${String(v)===String(current)?'selected':''}>${escapeHtml(v)}</option>`).join('')}
-  </select>`;
-}
-function inputHtml(value, oninput, type='text', cls='', step=''){
-  const v = value === null || value === undefined ? '' : value;
-  const isNumeric = type === 'number';
-  const renderType = isNumeric ? 'text' : type;
-  const inputMode = isNumeric ? ' inputmode="numeric"' : '';
-  const stepAttr = step && !isNumeric ? ` step="${step}"` : '';
-  const textLike = ['text','search','url','tel','email','password','date'].includes(renderType) || isNumeric;
-  const textAttrs = textLike
-    ? ' autocomplete="off" autocapitalize="off" spellcheck="false"'
-    : '';
-  // 입력 중에는 DOM을 다시 그리지 않고 값만 상태에 반영한다. 포커스가 빠질 때 한 번만 저장/재계산한다.
-  return `<input class="${cls}" type="${renderType}" value="${escapeHtml(v)}" oninput="${oninput}" onblur="commitInputEdit()"${inputMode}${stepAttr}${textAttrs} />`;
-}
-function commitInputEdit(){
-  if (!pendingTextRender) return;
-  pendingTextRender = false;
-  syncMemberValidityAll();
-  saveState();
-  setTimeout(() => scheduleRecalc(true), 0);
-}
-function dateHtml(value, oninput){
-  return inputHtml(fmtDate(value), oninput, 'date');
-}
-function coachMonthlySeries(year, coach){
-  return Array.from({length:12}, (_, monthIndex) => {
-    const range = monthRange(year, monthIndex);
-    const memberRevenue = memberIncomeRows().reduce((sum, r) => sum + (r.coach === coach && inRange(r.date, range.start, range.end) ? (Number(r.received) || 0) : 0), 0);
-    const manualRevenue = extraIncomeRows().reduce((sum, r) => sum + (r.coach === coach && inRange(r.date, range.start, range.end) ? (Number(r.amount) || 0) : 0), 0);
-    return memberRevenue + manualRevenue;
-  });
-}
 function renderSummaryCharts(source='overview'){
   const y = Number(state.year) || new Date().getFullYear();
-  const selected = selectedCoach();
-  const selectedStats = selected ? coachRegistrationStats(selected) : null;
-  const selectedCoachRateHtml = selected
-    ? `${plainPctHtml(selectedStats.rate)} ${fmtNumber(selectedStats.reCount)}/${fmtNumber(selectedStats.total)}`
-    : '0.0%';
+  const selected = selectedCoachList();
   return `
     <div class="card" style="margin-top:14px;">
       <div class="section-title">
@@ -1754,8 +1713,8 @@ function renderSummaryCharts(source='overview'){
             </div>
             <div class="coach-inline">
               <span class="coach-label">강사 선택 :</span>
-              ${selectHtml('coach', selected, `updateSelectedCoachChart(this.value)`)}
-              <span class="coach-rate">(재등록율 : ${selectedCoachRateHtml})</span>
+              <div class="coach-toggles" id="${source}CoachToggles"></div>
+              <span class="coach-rate">(선택 강사 복수 표시)</span>
             </div>
           </div>
           <div class="chart-wrap"><canvas id="${source}CoachChart" class="chart-canvas"></canvas></div>
@@ -2363,10 +2322,10 @@ function recalc(){
   const snapshot = captureUiState();
   syncMemberValidityAll();
   const coachList = coachOptions();
-  if (state.selectedCoachChart && !coachList.includes(state.selectedCoachChart)) {
-    state.selectedCoachChart = coachList[0] || '';
-  }
-  if (!state.selectedCoachChart) state.selectedCoachChart = coachList[0] || '';
+  let selectedCoaches = Array.isArray(state.selectedCoachChart) ? state.selectedCoachChart : (state.selectedCoachChart ? [state.selectedCoachChart] : []);
+  selectedCoaches = selectedCoaches.filter(v => coachList.includes(v));
+  if (!selectedCoaches.length && coachList.length) selectedCoaches = [coachList[0]];
+  state.selectedCoachChart = selectedCoaches;
   document.getElementById('yearInput').value = state.year;
   document.getElementById('todayInfo').value = fmtDate(todayDate());
   document.getElementById('kpiRow').innerHTML = renderKpis();
