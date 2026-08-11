@@ -1469,11 +1469,11 @@ function scheduleChartRender(){
 
 const chartSeries = {
   amount: [
-    { key:'memberRevenue', label:'회원권매출', color:'#1d4ed8', enabled:true },
-    { key:'otherRevenue', label:'기타수입', color:'#0f766e', enabled:true },
-    { key:'totalRevenue', label:'총매출', color:'#0b5fff', enabled:true },
+    { key:'memberRevenue', label:'회원권매출', color:'#0f766e', enabled:false },
+    { key:'otherRevenue', label:'기타수입', color:'#64748b', enabled:false },
+    { key:'totalRevenue', label:'총매출', color:'#1d4ed8', enabled:true },
     { key:'totalExpense', label:'총지출', color:'#b45309', enabled:false },
-    { key:'profit', label:'영업이익', color:'#7c3aed', enabled:false },
+    { key:'profit', label:'영업이익', color:'#dc2626', enabled:true },
     { key:'임대료', label:'임대료', color:'#ef4444', enabled:false },
     { key:'관리비', label:'관리비', color:'#f59e0b', enabled:false },
     { key:'인건비', label:'인건비', color:'#06b6d4', enabled:false },
@@ -1872,10 +1872,93 @@ function renderPrices(){
     </div>
   `;
 }
+let memberSort = { key: 'group', dir: 'asc' };
+let salesSort = { key: 'count', dir: 'desc' };
+
+function toggleSort(stateObj, key, defaultDir='asc'){
+  if (stateObj.key === key) stateObj.dir = stateObj.dir === 'asc' ? 'desc' : 'asc';
+  else { stateObj.key = key; stateObj.dir = defaultDir; }
+  scheduleRecalc(true);
+}
+function sortArrow(stateObj, key){
+  if (stateObj.key !== key) return '↕';
+  return stateObj.dir === 'asc' ? '↑' : '↓';
+}
+function compareValues(a, b, dir='asc'){
+  const an = typeof a === 'number' && Number.isFinite(a);
+  const bn = typeof b === 'number' && Number.isFinite(b);
+  let cmp = 0;
+  if (an || bn){
+    const av = an ? a : -Infinity;
+    const bv = bn ? b : -Infinity;
+    cmp = av < bv ? -1 : av > bv ? 1 : 0;
+  } else {
+    const av = String(a ?? '').trim();
+    const bv = String(b ?? '').trim();
+    cmp = av.localeCompare(bv, 'ko-KR', {numeric:true, sensitivity:'base'});
+  }
+  return dir === 'asc' ? cmp : -cmp;
+}
+function memberGroupSortValue(group, key){
+  const rows = group.rows.map(x => x.m);
+  const reRows = rows.filter(m => String(m.regType || '').trim() === '재등록' || Number(m.regRound) > 0);
+  const base = reRows.length ? reRows[reRows.length - 1] : rows[0];
+  const baseIndex = state.members.indexOf(base);
+  const d = memberDerived(base, baseIndex);
+  switch(key){
+    case 'id': return d.id;
+    case 'name': return base.name || '';
+    case 'phone': return base.phone || '';
+    case 'regType': return reRows.length ? '재등록' : (base.regType || '신규');
+    case 'round': return Number(base.regRound) || 0;
+    case 'product': return base.product || '';
+    case 'start': return parseDate(base.start)?.getTime() || 0;
+    case 'end': return parseDate(memberValidityEnd(base))?.getTime() || 0;
+    case 'total': return Number(base.total) || 0;
+    case 'used': return Number(base.used) || 0;
+    case 'remain': return Number(d.remain) || 0;
+    case 'unit': return Number(d.unit) || 0;
+    case 'coach': return base.coach || '';
+    case 'status': return d.status || '';
+    default: return state.members.indexOf(base);
+  }
+}
+function sortMemberGroups(groups){
+  const {key, dir} = memberSort;
+  return [...groups].sort((a,b) => compareValues(memberGroupSortValue(a,key), memberGroupSortValue(b,key), dir));
+}
+function salesSortValue(row, key){
+  if (key === 'product') return row.product;
+  if (key === 'count') return row.count;
+  if (key === 'salesShare') return row.salesShare;
+  if (key === 'totalSales') return row.totalSales;
+  if (key === 'revenueShare') return row.revenueShare;
+  if (key === 'avg') return row.avg;
+  if (key === 'type') return row.salesType;
+  if (key === 'unitPrice') return row.unitPrice;
+  return row.idx;
+}
+function sortSalesRows(rows){
+  const {key, dir} = salesSort;
+  return [...rows].sort((a,b)=>compareValues(salesSortValue(a,key), salesSortValue(b,key), dir) || a.idx-b.idx);
+}
+function salesTypeLabel(row){
+  if (!row.count || !row.totalSales) return '판매 없음';
+  if (row.salesShare >= row.revenueShare * 1.15) return '고판매형';
+  if (row.revenueShare >= row.salesShare * 1.15) return '고단가 매출형';
+  return '균형형';
+}
+function salesTypeClass(type){
+  if (type === '고판매형') return 'success';
+  if (type === '고단가 매출형') return 'warning';
+  if (type === '균형형') return 'neutral';
+  return 'neutral';
+}
+
 function renderMembers(){
   ensureMemberGroups();
   const filters = getMemberFilters();
-  const allGroups = memberGroups();
+  const allGroups = sortMemberGroups(memberGroups());
   const groupBlocks = allGroups.map(group => {
     const rowsData = group.rows.map(({m, idx}) => {
       const d = memberDerived(m, idx);
@@ -1915,13 +1998,14 @@ function renderMembers(){
   const statusOpts = memberFilterOptions('status');
   const productOpts = memberFilterOptions('product');
   const regTypeOpts = memberFilterOptions('regType');
+  const sort = (key, defaultDir='asc') => `onclick="toggleSort(memberSort, '${key}', '${defaultDir}')" style="cursor:pointer;user-select:none;"`;
 
   return `
     <div class="card">
       <div class="section-title">
         <div>
           <h2>회원등록</h2>
-          <div class="note">신규 회원을 기준으로 재등록 이력을 같은 회원 아래에 1차·2차·3차 순서로 누적합니다. 재등록은 회원 수에 중복 반영되지 않습니다.</div>
+          <div class="note">신규 회원을 기준으로 재등록 이력을 같은 회원 아래에 누적합니다. 컬럼을 클릭하면 회원 그룹 단위로 정렬되며, 재등록은 신규와 함께 세트로 움직입니다.</div>
         </div>
         <button class="btn primary" onclick="addRow('member')">회원 추가</button>
       </div>
@@ -1934,31 +2018,33 @@ function renderMembers(){
       </div>
 
       <div class="member-filters">
-        <div class="filter-item">
-          <label>담당강사</label>
-          ${plainSelectHtml(coachOpts, filters.coach, `updateMemberFilter('coach', this.value)`)}
-        </div>
-        <div class="filter-item">
-          <label>상태</label>
-          ${plainSelectHtml(statusOpts, filters.status, `updateMemberFilter('status', this.value)`)}
-        </div>
-        <div class="filter-item">
-          <label>상품명</label>
-          ${plainSelectHtml(productOpts, filters.product, `updateMemberFilter('product', this.value)`)}
-        </div>
-        <div class="filter-item">
-          <label>회원 구분</label>
-          ${plainSelectHtml(regTypeOpts, filters.regType, `updateMemberFilter('regType', this.value)`)}
-        </div>
+        <div class="filter-item"><label>담당강사</label>${plainSelectHtml(coachOpts, filters.coach, `updateMemberFilter('coach', this.value)`)}</div>
+        <div class="filter-item"><label>상태</label>${plainSelectHtml(statusOpts, filters.status, `updateMemberFilter('status', this.value)`)}</div>
+        <div class="filter-item"><label>상품명</label>${plainSelectHtml(productOpts, filters.product, `updateMemberFilter('product', this.value)`)}</div>
+        <div class="filter-item"><label>회원 구분</label>${plainSelectHtml(regTypeOpts, filters.regType, `updateMemberFilter('regType', this.value)`)}</div>
         <button class="btn ghost" type="button" style="height:40px;margin-bottom:0;" onclick="state.memberFilters={coach:'전체',status:'전체',product:'전체',regType:'전체'}; scheduleRecalc(true);">필터 초기화</button>
       </div>
 
+      <div class="small" style="margin:-4px 0 8px;">※ 정렬 기준은 각 회원 그룹의 가장 최근 재등록 정보를 우선 사용합니다. 재등록 이력이 없으면 신규 등록 정보를 기준으로 정렬합니다. 정렬 후에도 신규 → 재등록 1차 → 2차 순서는 유지됩니다.</div>
       <div class="table-wrap">
         <table>
           <thead>
             <tr>
-              <th>회원ID</th><th>회원명</th><th>연락처(선택)</th><th>회원구분</th><th>등록회차</th><th>상품명</th><th>시작일</th><th>종료일</th>
-              <th>총횟수</th><th>사용횟수</th><th>잔여횟수</th><th>회당단가</th><th>담당강사</th><th>상태</th><th>관리</th>
+              <th ${sort('id')}>회원ID ${sortArrow(memberSort,'id')}</th>
+              <th ${sort('name')}>회원명 ${sortArrow(memberSort,'name')}</th>
+              <th ${sort('phone')}>연락처(선택) ${sortArrow(memberSort,'phone')}</th>
+              <th ${sort('regType')}>회원구분 ${sortArrow(memberSort,'regType')}</th>
+              <th ${sort('round')}>등록회차 ${sortArrow(memberSort,'round')}</th>
+              <th ${sort('product')}>상품명 ${sortArrow(memberSort,'product')}</th>
+              <th ${sort('start')}>시작일 ${sortArrow(memberSort,'start')}</th>
+              <th ${sort('end')}>종료일 ${sortArrow(memberSort,'end')}</th>
+              <th ${sort('total')}>총횟수 ${sortArrow(memberSort,'total')}</th>
+              <th ${sort('used')}>사용횟수 ${sortArrow(memberSort,'used')}</th>
+              <th ${sort('remain')}>잔여횟수 ${sortArrow(memberSort,'remain')}</th>
+              <th ${sort('unit')}>회당단가 ${sortArrow(memberSort,'unit')}</th>
+              <th ${sort('coach')}>담당강사 ${sortArrow(memberSort,'coach')}</th>
+              <th ${sort('status')}>상태 ${sortArrow(memberSort,'status')}</th>
+              <th>관리</th>
             </tr>
           </thead>
           <tbody>${groupBlocks || `<tr><td colspan="15" class="center" style="padding:18px;color:var(--muted);">조건에 맞는 회원이 없습니다.</td></tr>`}</tbody>
@@ -1968,6 +2054,7 @@ function renderMembers(){
     </div>
   `;
 }
+
 function renderIncome(){
 
   const linked = memberIncomeRows().map((r, idx) => `
@@ -2073,7 +2160,7 @@ function renderExpenses(){
   `;
 }
 function renderSales(){
-  const sales = state.priceTable.map((p, idx) => {
+  const baseSales = state.priceTable.map((p, idx) => {
     const product = p.product || '';
     const productRows = memberIncomeRows().filter(r => r.product === product);
     const count = productRows.filter(r => Number(r.received) > 0).length;
@@ -2081,7 +2168,6 @@ function renderSales(){
     const avg = count ? totalSales / count : 0;
     return {
       product,
-      totalCount: Number(p.total) || 0,
       unitPrice: Number(p.unit) || ((Number(p.total)||0) > 0 ? (Number(p.price)||0) / (Number(p.total)||1) : 0),
       count,
       totalSales,
@@ -2090,58 +2176,72 @@ function renderSales(){
     };
   }).filter(r => r.product);
 
-  const totalCount = sales.reduce((sum,r)=>sum+r.count,0);
-  const totalRevenue = sales.reduce((sum,r)=>sum+r.totalSales,0);
-  const rankedByCount = [...sales].sort((a,b)=>b.count-a.count || b.totalSales-a.totalSales);
-  const rankedByRevenue = [...sales].sort((a,b)=>b.totalSales-a.totalSales || b.count-a.count);
+  const totalCount = baseSales.reduce((sum,r)=>sum+r.count,0);
+  const totalRevenue = baseSales.reduce((sum,r)=>sum+r.totalSales,0);
+  const sales = baseSales.map(r => ({
+    ...r,
+    salesShare: totalCount ? r.count / totalCount : 0,
+    revenueShare: totalRevenue ? r.totalSales / totalRevenue : 0
+  })).map(r => ({...r, salesType: salesTypeLabel(r)}));
+
+  const rankedByCount = [...sales].sort((a,b)=>b.count-a.count || b.totalSales-a.totalSales || a.idx-b.idx);
+  const rankedByRevenue = [...sales].sort((a,b)=>b.totalSales-a.totalSales || b.count-a.count || a.idx-b.idx);
   const bestSeller = rankedByCount[0];
   const bestRevenue = rankedByRevenue[0];
-
-  const rows = [...sales]
-    .sort((a,b)=>b.count-a.count || b.totalSales-a.totalSales || a.idx-b.idx)
-    .map((r, rank) => {
-      const salesShare = totalCount ? r.count / totalCount : 0;
-      const revenueShare = totalRevenue ? r.totalSales / totalRevenue : 0;
-      const isBest = bestSeller && r.product === bestSeller.product;
-      return `<tr>
-        <td class="center"><strong>${rank + 1}</strong></td>
-        <td><strong>${escapeHtml(r.product)}</strong>${isBest ? ' <span class="member-round-badge new">판매 1위</span>' : ''}</td>
-        <td class="currency">${plainNumberHtml(r.count)}</td>
-        <td class="currency">${plainPctHtml(salesShare)}</td>
-        <td class="currency">${plainNumberHtml(r.totalSales)}</td>
-        <td class="currency">${plainPctHtml(revenueShare)}</td>
-        <td class="currency">${plainNumberHtml(r.avg)}</td>
-        <td class="currency">${plainNumberHtml(r.totalCount)}</td>
-        <td class="currency">${plainNumberHtml(r.unitPrice)}</td>
-      </tr>`;
-    }).join('');
+  const topHighVolume = sales.filter(r => r.salesType === '고판매형').sort((a,b)=>b.count-a.count || b.salesShare-a.salesShare || a.idx-b.idx)[0];
+  const topHighValue = sales.filter(r => r.salesType === '고단가 매출형').sort((a,b)=>b.totalSales-a.totalSales || b.avg-a.avg || a.idx-b.idx)[0];
+  const rows = sortSalesRows(sales).map((r, index) => {
+    const typeClass = salesTypeClass(r.salesType);
+    const isBestVolume = bestSeller && r.product === bestSeller.product;
+    const isBestRevenue = bestRevenue && r.product === bestRevenue.product;
+    return `<tr>
+      <td class="center"><strong>${index + 1}</strong></td>
+      <td><strong>${escapeHtml(r.product)}</strong>${isBestVolume ? ' <span class="member-round-badge new">판매 1위</span>' : ''}${isBestRevenue ? ' <span class="member-round-badge re">매출 1위</span>' : ''}</td>
+      <td class="currency">${plainNumberHtml(r.count)}</td>
+      <td class="currency">${plainPctHtml(r.salesShare)}</td>
+      <td class="currency">${plainNumberHtml(r.totalSales)}</td>
+      <td class="currency">${plainPctHtml(r.revenueShare)}</td>
+      <td class="currency">${plainNumberHtml(r.avg)}</td>
+      <td class="center"><span class="tag ${typeClass}">${r.salesType}</span></td>
+      <td class="currency">${plainNumberHtml(r.unitPrice)}</td>
+    </tr>`;
+  }).join('');
+  const sort = (key, defaultDir='asc') => `onclick="toggleSort(salesSort, '${key}', '${defaultDir}')" style="cursor:pointer;user-select:none;"`;
 
   return `
     <div class="card">
       <div class="section-title">
         <div>
           <h2>횟수권별매출</h2>
-          <div class="note">횟수권별 판매량과 매출 기여도를 비교하고, 어떤 상품이 가장 잘 팔리는지 확인합니다.</div>
+          <div class="note">판매량, 매출기여도, 평균판매가를 비교해 고판매형과 고단가 매출형을 구분합니다. 컬럼을 클릭하면 오름차순/내림차순으로 정렬됩니다.</div>
         </div>
       </div>
 
       <div class="member-summary-strip" style="margin-bottom:14px;">
         <div><span>판매 1위 상품</span><strong>${escapeHtml(bestSeller?.product || '-')}</strong></div>
         <div><span>판매 1위 건수</span><strong>${plainNumberHtml(bestSeller?.count || 0)}건</strong></div>
-        <div><span>매출 1위 상품</span><strong>${escapeHtml(bestRevenue?.product || '-')}</strong></div>
-        <div><span>횟수권 총매출</span><strong>${plainNumberHtml(totalRevenue)}</strong></div>
+        <div><span>고판매형 대표</span><strong>${escapeHtml(topHighVolume?.product || '-')}</strong></div>
+        <div><span>고단가 매출형 대표</span><strong>${escapeHtml(topHighValue?.product || '-')}</strong></div>
       </div>
 
       <div class="muted-box" style="margin-bottom:14px;">
-        <strong>상품 성과 해석</strong> · 판매건수가 가장 많은 상품은 <strong>${escapeHtml(bestSeller?.product || '-')}</strong>이고, 매출이 가장 큰 상품은 <strong>${escapeHtml(bestRevenue?.product || '-')}</strong>입니다.
-        판매건수와 매출이 서로 다른 상품이라면 <strong>고판매형</strong>과 <strong>고단가 매출형</strong>을 구분해서 볼 수 있습니다.
+        <strong>상품 성과 해석</strong> · <strong>고판매형</strong>은 판매건수 비중이 매출 비중보다 높은 상품, <strong>고단가 매출형</strong>은 매출 비중이 판매건수 비중보다 높은 상품으로 구분합니다. 두 비중이 비슷한 경우는 <strong>균형형</strong>으로 표시합니다.
+        ${bestSeller && bestRevenue ? `현재 판매 1위는 <strong>${escapeHtml(bestSeller.product)}</strong>, 매출 1위는 <strong>${escapeHtml(bestRevenue.product)}</strong>입니다.` : ''}
       </div>
 
       <div class="table-wrap">
         <table>
           <thead>
             <tr>
-              <th>순위</th><th>상품명</th><th>판매건수</th><th>판매비중</th><th>총매출</th><th>매출비중</th><th>평균판매가</th><th>총횟수</th><th>회당가격</th>
+              <th>순위</th>
+              <th ${sort('product')}>상품명 ${sortArrow(salesSort,'product')}</th>
+              <th ${sort('count','desc')}>판매건수 ${sortArrow(salesSort,'count')}</th>
+              <th ${sort('salesShare','desc')}>판매비중 ${sortArrow(salesSort,'salesShare')}</th>
+              <th ${sort('totalSales','desc')}>총매출 ${sortArrow(salesSort,'totalSales')}</th>
+              <th ${sort('revenueShare','desc')}>매출비중 ${sortArrow(salesSort,'revenueShare')}</th>
+              <th ${sort('avg','desc')}>평균판매가 ${sortArrow(salesSort,'avg')}</th>
+              <th ${sort('type')}>판매형태 ${sortArrow(salesSort,'type')}</th>
+              <th ${sort('unitPrice','desc')}>회당가격 ${sortArrow(salesSort,'unitPrice')}</th>
             </tr>
           </thead>
           <tbody>${rows || `<tr><td colspan="9" class="center" style="padding:18px;color:var(--muted);">등록된 횟수권 상품이 없습니다.</td></tr>`}</tbody>
@@ -2150,6 +2250,7 @@ function renderSales(){
     </div>
   `;
 }
+
 function renderMonthly(){
   const y = Number(state.year) || new Date().getFullYear();
   const months = annualSummary();
