@@ -814,6 +814,7 @@ async function logoutSupabase(){
 }
 
 let state = loadSavedState();
+let activeCoachChartSelection = '';
 if (!state.memberSort || typeof state.memberSort !== 'object') state.memberSort = {key:'id', dir:'asc'};
 if (!state.memberSortInitializedV2) { state.memberSort = {key:'id', dir:'asc'}; state.memberSortInitializedV2 = true; }
 if (!Array.isArray(state.selectedCoachChart)) state.selectedCoachChart = state.selectedCoachChart ? [state.selectedCoachChart] : [];
@@ -1288,25 +1289,53 @@ function coachChartOptions(){
 }
 function selectedCoachList(){
   const options = coachChartOptions();
-  const raw = Array.isArray(state.selectedCoachChart) ? state.selectedCoachChart : (state.selectedCoachChart ? [state.selectedCoachChart] : []);
-  let valid = [...new Set(raw.filter(v => options.includes(v)))];
-  if (!valid.length && options.includes('박예린')) valid = ['박예린'];
-  if (!valid.length && options.length) valid = [options[0]];
-  state.selectedCoachChart = valid;
-  return valid;
+  if (!options.length) {
+    activeCoachChartSelection = '';
+    state.selectedCoachChart = [];
+    return [];
+  }
+  if (!activeCoachChartSelection || !options.includes(activeCoachChartSelection)) {
+    const saved = Array.isArray(state.selectedCoachChart) ? state.selectedCoachChart[0] : state.selectedCoachChart;
+    activeCoachChartSelection = options.includes(saved) ? saved : (options.includes('박예린') ? '박예린' : options[0]);
+  }
+  state.selectedCoachChart = [activeCoachChartSelection];
+  return [activeCoachChartSelection];
 }
 function selectedCoach(){
   return selectedCoachList()[0] || '';
 }
-function updateSelectedCoachChart(value, inputEl){
+function updateCoachChartView(forcedCoach=''){
+  const options = coachChartOptions();
+  const coach = forcedCoach && options.includes(forcedCoach) ? forcedCoach : selectedCoach();
+  if (!coach) return;
+  activeCoachChartSelection = coach;
+  state.selectedCoachChart = [coach];
+
+  const y = Number(state.year) || new Date().getFullYear();
+  const labels = Array.from({length:12}, (_,i) => monthLabel(y,i));
+  const data = coachMonthlySeries(y, coach);
+  const coachSeries = [{ key:'coachRevenue', label:`${coach} 매출`, color:'#7c3aed', enabled:true, data }];
+
+  const overviewCanvas = document.getElementById('overviewCoachChart');
+  const monthlyCanvas = document.getElementById('monthlyCoachChart');
+  if (overviewCanvas) drawChart(overviewCanvas, coachSeries, labels, 'amount');
+  if (monthlyCanvas) drawChart(monthlyCanvas, coachSeries, labels, 'amount');
+
+  renderCoachStatsAndTable('overview', [coach], labels, y);
+  renderCoachStatsAndTable('monthly', [coach], labels, y);
+
+  document.querySelectorAll('.coach-toggles input[data-coach]').forEach(input => {
+    input.checked = input.getAttribute('data-coach') === coach;
+  });
+}
+
+function updateSelectedCoachChart(value){
   const options = coachChartOptions();
   if (!options.includes(value)) return;
-  // 담당 강사 체크박스는 항상 1개만 선택되도록 즉시 UI와 상태를 동시에 동기화
-  document.querySelectorAll('.coach-toggles input[type=\"checkbox\"]').forEach(cb => {
-    cb.checked = (cb === inputEl);
-  });
+  activeCoachChartSelection = value;
   state.selectedCoachChart = [value];
-  scheduleRecalc(true);
+  updateCoachChartView(value);
+  saveState();
 }
 
 function getMemberFilters(){
@@ -1631,23 +1660,10 @@ function renderCharts(){
     renderAmountStatsAndTable(t.prefix, months, y);
   });
 
-  const selected = selectedCoachList().slice(0,1);
-  // 상태도 1개 선택으로 정규화합니다.
-  state.selectedCoachChart = selected;
+  const coach = selectedCoach();
   renderCoachToggles('overview');
   renderCoachToggles('monthly');
-  const coachColors = ['#7c3aed'];
-  const coachSeries = selected.map((coach, idx) => ({
-    key:`coachRevenue_${idx}`,
-    label:`${coach} 매출`,
-    color:coachColors[idx % coachColors.length],
-    enabled:true,
-    data:coachMonthlySeries(y, coach)
-  }));
-  drawChart(document.getElementById('overviewCoachChart'), coachSeries, labels, 'amount');
-  drawChart(document.getElementById('monthlyCoachChart'), coachSeries, labels, 'amount');
-  renderCoachStatsAndTable('overview', selected, labels, y);
-  renderCoachStatsAndTable('monthly', selected, labels, y);
+  if (coach) updateCoachChartView(coach);
 }
 function renderAmountStatsAndTable(prefix, months, y){
   const enabled = chartSeries.amount.filter(s => s.enabled);
@@ -1684,12 +1700,13 @@ function renderAmountStatsAndTable(prefix, months, y){
 function renderCoachToggles(source){
   const el = document.getElementById(`${source}CoachToggles`);
   if (!el) return;
-  const selected = selectedCoachList();
+  const selectedCoachValue = selectedCoach();
   const options = coachChartOptions();
   el.innerHTML = options.map(coach => `
-    <label class="series-toggle"><input type="checkbox" ${selected.includes(coach) ? 'checked' : ''} onchange="updateSelectedCoachChart(${JSON.stringify(coach)}, this)">${escapeHtml(coach)}</label>
+    <label class="series-toggle"><input type="radio" name="${source}CoachChartToggle" data-coach="${escapeHtml(coach)}" value="${escapeHtml(coach)}" ${coach === selectedCoachValue ? 'checked' : ''} onchange="updateSelectedCoachChart(${JSON.stringify(coach)})">${escapeHtml(coach)}</label>
   `).join('');
 }
+
 function renderCoachStatsAndTable(source, selected, labels, y){
   const statsEl = document.getElementById(`${source}CoachStats`);
   const tableEl = document.getElementById(`${source}CoachTable`);
@@ -2311,8 +2328,11 @@ function recalc(){
   const snapshot = captureUiState();
   syncMemberValidityAll();
   const coachList = coachChartOptions();
-  selectedCoachList();
-  state.selectedCoachChart = selectedCoachList().filter(v => coachList.includes(v));
+  if (!activeCoachChartSelection || !coachList.includes(activeCoachChartSelection)) {
+    const saved = Array.isArray(state.selectedCoachChart) ? state.selectedCoachChart[0] : state.selectedCoachChart;
+    activeCoachChartSelection = coachList.includes(saved) ? saved : (coachList.includes('박예린') ? '박예린' : (coachList[0] || ''));
+  }
+  state.selectedCoachChart = activeCoachChartSelection ? [activeCoachChartSelection] : [];
   document.getElementById('yearInput').value = state.year;
   document.getElementById('todayInfo').value = fmtDate(todayDate());
   document.getElementById('kpiRow').innerHTML = renderKpis();
