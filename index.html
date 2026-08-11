@@ -327,6 +327,16 @@
   .series-toggle{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--line);background:#fff;border-radius:999px;padding:6px 10px;font-size:12px;font-weight:700;cursor:pointer;user-select:none;}
   .series-toggle input{margin:0}
   .chart-wrap{position:relative;width:100%;height:300px;border:1px solid var(--line2);border-radius:14px;background:linear-gradient(180deg,#ffffff 0%,#fbfdff 100%);overflow:hidden;}
+  .chart-grid{align-items:stretch;}
+  .chart-card{display:flex;flex-direction:column;height:100%;}
+  .chart-card .chart-wrap{flex:0 0 300px;}
+  .chart-stats{margin-top:10px;padding:10px 12px;border:1px solid var(--line2);border-radius:12px;background:#f8fbff;display:flex;gap:14px;flex-wrap:wrap;}
+  .chart-stat{display:flex;align-items:baseline;gap:6px;font-size:12px;color:var(--muted);}
+  .chart-stat strong{font-size:14px;color:var(--text);}
+  .chart-month-table{margin-top:10px;}
+  .chart-month-table table{min-width:0;}
+  .chart-month-table th,.chart-month-table td{font-size:12px;padding:7px 9px;}
+
   .chart-canvas{width:100%;height:100%;display:block;}
   .legend-note{font-size:12px;color:var(--muted);}
   .positive,.signed-positive{color:#dc2626;font-weight:800;}
@@ -1580,50 +1590,78 @@ function renderCharts(){
   const months = annualSummary();
   const labels = Array.from({length:12}, (_,i) => monthLabel(y,i));
   const amountTargets = [
-    { prefix:'overview', amountId:'overviewAmountToggles', canvasId:'overviewAmountChart' },
-    { prefix:'monthly', amountId:'monthlyAmountToggles', canvasId:'monthlyAmountChart' },
+    { amountId:'overviewAmountToggles', canvasId:'overviewAmountChart' },
+    { amountId:'monthlyAmountToggles', canvasId:'monthlyAmountChart' },
   ];
   amountTargets.forEach(t => {
     const amountSeries = chartSeries.amount.map(s => ({
       ...s,
-      data: months.map((m,i) => getSeriesValue(m, s.key))
+      data: months.map(m => getSeriesValue(m, s.key))
     }));
     buildToggles('amount', t.amountId);
     drawChart(document.getElementById(t.canvasId), amountSeries, labels, 'amount');
+    renderAmountStats(t.amountId.replace('Toggles',''));
   });
-  const marginSeries = chartSeries.margin.map(s => ({
-    ...s,
-    data: months.map((m,i) => getSeriesValue(m, s.key))
-  }));
-  buildToggles('margin', 'marginToggles');
-  drawChart(document.getElementById('marginChart'), marginSeries, labels, 'margin');
   const selected = selectedCoach();
-  const coachAmountSeries = selected ? [
-    {
-      key:'totalRevenue',
-      label:'총매출',
-      color:'#1d4ed8',
-      enabled:true,
-      data: months.map(m => m.rev.totalRevenue)
-    },
-    {
-      key:'coachRevenue',
-      label:`${selected} 매출`,
-      color:'#7c3aed',
-      enabled:true,
-      data: coachMonthlySeries(y, selected)
-    },
-  ] : [{
-    key:'totalRevenue',
-    label:'총매출',
-    color:'#1d4ed8',
+  const coachData = selected ? coachMonthlySeries(y, selected) : Array(12).fill(0);
+  const coachSeries = [{
+    key:'coachRevenue',
+    label:selected ? `${selected} 매출` : '강사 매출',
+    color:'#7c3aed',
     enabled:true,
-    data: months.map(m => m.rev.totalRevenue)
+    data: coachData
   }];
-  drawChart(document.getElementById('overviewCoachChart'), coachAmountSeries, labels, 'amount');
-  drawChart(document.getElementById('monthlyCoachChart'), coachAmountSeries, labels, 'amount');
+  drawChart(document.getElementById('overviewCoachChart'), coachSeries, labels, 'amount');
+  drawChart(document.getElementById('monthlyCoachChart'), coachSeries, labels, 'amount');
+  renderCoachStatsAndTable('overview', selected, coachData, labels);
+  renderCoachStatsAndTable('monthly', selected, coachData, labels);
 }
 
+function renderAmountStats(prefix){
+  const y = Number(state.year) || new Date().getFullYear();
+  const months = annualSummary();
+  const avgRevenue = months.length ? months.reduce((s,m)=>s + m.rev.totalRevenue,0) / months.length : 0;
+  const avgProfit = months.length ? months.reduce((s,m)=>s + m.profit,0) / months.length : 0;
+  const statsEl = document.getElementById(`${prefix}AmountStats`);
+  const tableEl = document.getElementById(`${prefix}AmountTable`);
+  if (statsEl){
+    statsEl.innerHTML = `
+      <div class="chart-stat"><span>월평균 총매출</span><strong>${fmtNumber(avgRevenue)}원</strong></div>
+      <div class="chart-stat"><span>월평균 영업이익</span><strong>${signedNumberHtml(avgProfit)}원</strong></div>
+    `;
+  }
+  if (tableEl){
+    tableEl.innerHTML = `
+      <table>
+        <thead><tr><th>월</th><th>총매출</th><th>영업이익</th></tr></thead>
+        <tbody>${months.map((m,i)=>`<tr><td>${labelsFromYear(y,i)}</td><td class="currency">${plainNumberHtml(m.rev.totalRevenue)}</td><td class="currency">${signedNumberHtml(m.profit)}</td></tr>`).join('')}</tbody>
+      </table>
+    `;
+  }
+}
+
+function labelsFromYear(y,i){ return monthLabel(y,i); }
+
+function renderCoachStatsAndTable(prefix, coach, data, labels){
+  const statsEl = document.getElementById(`${prefix}CoachStats`);
+  const tableEl = document.getElementById(`${prefix}CoachTable`);
+  const avg = data.length ? data.reduce((a,b)=>a+b,0) / data.length : 0;
+  if (statsEl){
+    statsEl.innerHTML = `
+      <div class="chart-stat"><span>선택 강사</span><strong>${escapeHtml(coach || '없음')}</strong></div>
+      <div class="chart-stat"><span>월평균 매출</span><strong>${fmtNumber(avg)}원</strong></div>
+      <div class="chart-stat"><span>연간 매출</span><strong>${fmtNumber(data.reduce((a,b)=>a+b,0))}원</strong></div>
+    `;
+  }
+  if (tableEl){
+    tableEl.innerHTML = `
+      <table>
+        <thead><tr><th>월</th><th>${escapeHtml(coach || '강사')} 매출</th></tr></thead>
+        <tbody>${data.map((v,i)=>`<tr><td>${labels[i]}</td><td class="currency">${plainNumberHtml(v)}</td></tr>`).join('')}</tbody>
+      </table>
+    `;
+  }
+}
 
 function codeValueList(kind, current){
   const list = {
@@ -1682,29 +1720,8 @@ function coachMonthlySeries(year, coach){
 }
 function renderSummaryCharts(source='overview'){
   const y = Number(state.year) || new Date().getFullYear();
-  const months = annualSummary();
-  const labels = Array.from({length:12}, (_,i) => monthLabel(y,i));
   const selected = selectedCoach();
   const selectedStats = selected ? coachRegistrationStats(selected) : null;
-  const coachSeries = selected ? [{
-    key:'totalRevenue',
-    label:'총매출',
-    color:'#1d4ed8',
-    enabled:true,
-    data: months.map(m => m.rev.totalRevenue)
-  },{
-    key:'coachRevenue',
-    label:`${selected} 매출`,
-    color:'#7c3aed',
-    enabled:true,
-    data: coachMonthlySeries(y, selected)
-  }] : [{
-    key:'totalRevenue',
-    label:'총매출',
-    color:'#1d4ed8',
-    enabled:true,
-    data: months.map(m => m.rev.totalRevenue)
-  }];
   const selectedCoachRateHtml = selected
     ? `${plainPctHtml(selectedStats.rate)} ${fmtNumber(selectedStats.reCount)}/${fmtNumber(selectedStats.total)}`
     : '0.0%';
@@ -1713,7 +1730,7 @@ function renderSummaryCharts(source='overview'){
       <div class="section-title">
         <div>
           <h2>요약</h2>
-          <div class="note">월간 요약의 핵심 그래프를 홈에서 바로 볼 수 있습니다.</div>
+          <div class="note">월별 금액과 선택 강사의 매출 흐름을 그래프와 표로 함께 확인합니다.</div>
         </div>
       </div>
       <div class="chart-grid">
@@ -1721,17 +1738,19 @@ function renderSummaryCharts(source='overview'){
           <div class="chart-head">
             <div>
               <h3>전체 금액 변화 그래프</h3>
-              <div class="legend-note">매출, 지출, 영업이익, 주요 항목을 월별로 확인합니다.</div>
+              <div class="legend-note">총매출과 영업이익의 월별 변화를 확인합니다.</div>
             </div>
             <div class="series-toggles" id="${source}AmountToggles"></div>
           </div>
           <div class="chart-wrap"><canvas id="${source}AmountChart" class="chart-canvas"></canvas></div>
+          <div class="chart-stats" id="${source}AmountStats"></div>
+          <div class="chart-month-table table-wrap" id="${source}AmountTable"></div>
         </div>
         <div class="chart-card">
           <div class="chart-head">
             <div style="min-width:0;">
               <h3>담당 강사별 매출 그래프</h3>
-              <div class="legend-note">전체 매출과 선택한 강사의 월별 매출을 함께 확인합니다.</div>
+              <div class="legend-note">선택한 강사의 매출만 월별로 표시합니다.</div>
             </div>
             <div class="coach-inline">
               <span class="coach-label">강사 선택 :</span>
@@ -1740,11 +1759,14 @@ function renderSummaryCharts(source='overview'){
             </div>
           </div>
           <div class="chart-wrap"><canvas id="${source}CoachChart" class="chart-canvas"></canvas></div>
+          <div class="chart-stats" id="${source}CoachStats"></div>
+          <div class="chart-month-table table-wrap" id="${source}CoachTable"></div>
         </div>
       </div>
     </div>
   `;
 }
+
 function renderOverview(){
   const items = [
     '1) 회원권_가격표에서 판매 중인 횟수권과 금액, 유효기간을 먼저 입력합니다.',
