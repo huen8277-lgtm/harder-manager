@@ -1340,6 +1340,16 @@ function updateMember(idx, field, value){
   ensureMemberGroups();
   markInputDirty();
 }
+
+function updateMemberProduct(idx, value){
+  const row = state.members[idx];
+  if (!row) return;
+  row.product = value;
+  const priceRow = getPrice(value);
+  row.total = priceRow ? (Number(priceRow.total) || 0) : '';
+  ensureMemberGroups();
+  markInputDirty();
+}
 function addMemberReRegistration(idx){
   ensureMemberGroups();
   const source = state.members[idx];
@@ -1374,7 +1384,9 @@ function updateManualIncome(idx, field, value){
 }
 function addRow(kind){
   if (kind === 'member'){
-    state.members.push({name:'',phone:'',regType:'신규',start:'',end:'',product:state.priceTable[0]?.product || '',total:'',used:'',coach:state.instructorOptions[0]||state.selectedCoachChart||''});
+    const defaultProduct = state.priceTable[0]?.product || '';
+    const defaultPrice = getPrice(defaultProduct);
+    state.members.push({name:'',phone:'',regType:'신규',start:'',end:'',product:defaultProduct,total:defaultPrice ? (Number(defaultPrice.total) || 0) : '',used:'',coach:state.instructorOptions[0]||state.selectedCoachChart||''});
     const idx = state.members.length - 1;
     pendingFocus = { oninput: `updateMember(${idx}, 'name', this.value)`, selectionStart: 0, selectionEnd: 0 };
   } else if (kind === 'expense'){
@@ -1881,7 +1893,7 @@ function renderMembers(){
         <td class="input-cell">${inputHtml(m.phone, `updateMember(${idx}, 'phone', this.value)`, 'tel', 'phone-input')} </td>
         <td class="input-cell">${selectHtml('memberType', regType, `updateMember(${idx}, 'regType', this.value)`)}</td>
         <td class="computed center"><span class="member-round-badge ${isRe ? 're' : 'new'}">${roundLabel}</span></td>
-        <td class="input-cell">${selectHtml('product', m.product, `updateMember(${idx}, 'product', this.value)`)}</td>
+        <td class="input-cell">${selectHtml('product', m.product, `updateMemberProduct(${idx}, this.value)`)} </td>
         <td class="input-cell">${dateHtml(m.start, `updateMember(${idx}, 'start', this.value)`)} </td>
         <td class="computed center">${escapeHtml(d.end || '')}</td>
         <td class="input-cell">${inputHtml(m.total, `updateMember(${idx}, 'total', this.value)`, 'number', '', 1)} </td>
@@ -2061,34 +2073,78 @@ function renderExpenses(){
   `;
 }
 function renderSales(){
-  const rows = state.priceTable.map((p) => {
-    const count = memberIncomeRows().filter(r => r.product === p.product && Number(r.received) > 0).length;
-    const totalSales = memberIncomeRows().filter(r => r.product === p.product).reduce((a,r)=>a+(Number(r.received)||0),0);
+  const sales = state.priceTable.map((p, idx) => {
+    const product = p.product || '';
+    const productRows = memberIncomeRows().filter(r => r.product === product);
+    const count = productRows.filter(r => Number(r.received) > 0).length;
+    const totalSales = productRows.reduce((a,r)=>a+(Number(r.received)||0),0);
     const avg = count ? totalSales / count : 0;
-    return `<tr>
-      <td>${escapeHtml(p.product)}</td>
-      <td class="currency">${plainNumberHtml(count)}</td>
-      <td class="currency">${plainNumberHtml(totalSales)}</td>
-      <td class="currency">${plainNumberHtml(avg)}</td>
-      <td class="currency">${plainNumberHtml(p.total)}</td>
-      <td class="currency">${plainNumberHtml(p.unit)}</td>
-      <td class="currency">${plainNumberHtml(p.days)}</td>
-    </tr>`;
-  }).join('');
+    return {
+      product,
+      totalCount: Number(p.total) || 0,
+      unitPrice: Number(p.unit) || ((Number(p.total)||0) > 0 ? (Number(p.price)||0) / (Number(p.total)||1) : 0),
+      count,
+      totalSales,
+      avg,
+      idx
+    };
+  }).filter(r => r.product);
+
+  const totalCount = sales.reduce((sum,r)=>sum+r.count,0);
+  const totalRevenue = sales.reduce((sum,r)=>sum+r.totalSales,0);
+  const rankedByCount = [...sales].sort((a,b)=>b.count-a.count || b.totalSales-a.totalSales);
+  const rankedByRevenue = [...sales].sort((a,b)=>b.totalSales-a.totalSales || b.count-a.count);
+  const bestSeller = rankedByCount[0];
+  const bestRevenue = rankedByRevenue[0];
+
+  const rows = [...sales]
+    .sort((a,b)=>b.count-a.count || b.totalSales-a.totalSales || a.idx-b.idx)
+    .map((r, rank) => {
+      const salesShare = totalCount ? r.count / totalCount : 0;
+      const revenueShare = totalRevenue ? r.totalSales / totalRevenue : 0;
+      const isBest = bestSeller && r.product === bestSeller.product;
+      return `<tr>
+        <td class="center"><strong>${rank + 1}</strong></td>
+        <td><strong>${escapeHtml(r.product)}</strong>${isBest ? ' <span class="member-round-badge new">판매 1위</span>' : ''}</td>
+        <td class="currency">${plainNumberHtml(r.count)}</td>
+        <td class="currency">${plainPctHtml(salesShare)}</td>
+        <td class="currency">${plainNumberHtml(r.totalSales)}</td>
+        <td class="currency">${plainPctHtml(revenueShare)}</td>
+        <td class="currency">${plainNumberHtml(r.avg)}</td>
+        <td class="currency">${plainNumberHtml(r.totalCount)}</td>
+        <td class="currency">${plainNumberHtml(r.unitPrice)}</td>
+      </tr>`;
+    }).join('');
+
   return `
     <div class="card">
       <div class="section-title">
         <div>
           <h2>횟수권별매출</h2>
-          <div class="note">상품별 판매건수와 매출을 자동 집계합니다.</div>
+          <div class="note">횟수권별 판매량과 매출 기여도를 비교하고, 어떤 상품이 가장 잘 팔리는지 확인합니다.</div>
         </div>
       </div>
+
+      <div class="member-summary-strip" style="margin-bottom:14px;">
+        <div><span>판매 1위 상품</span><strong>${escapeHtml(bestSeller?.product || '-')}</strong></div>
+        <div><span>판매 1위 건수</span><strong>${plainNumberHtml(bestSeller?.count || 0)}건</strong></div>
+        <div><span>매출 1위 상품</span><strong>${escapeHtml(bestRevenue?.product || '-')}</strong></div>
+        <div><span>횟수권 총매출</span><strong>${plainNumberHtml(totalRevenue)}</strong></div>
+      </div>
+
+      <div class="muted-box" style="margin-bottom:14px;">
+        <strong>상품 성과 해석</strong> · 판매건수가 가장 많은 상품은 <strong>${escapeHtml(bestSeller?.product || '-')}</strong>이고, 매출이 가장 큰 상품은 <strong>${escapeHtml(bestRevenue?.product || '-')}</strong>입니다.
+        판매건수와 매출이 서로 다른 상품이라면 <strong>고판매형</strong>과 <strong>고단가 매출형</strong>을 구분해서 볼 수 있습니다.
+      </div>
+
       <div class="table-wrap">
         <table>
           <thead>
-            <tr><th>상품명</th><th>판매건수</th><th>총매출</th><th>평균정가</th><th>총횟수</th><th>회당가격</th><th>유효기간(일)</th></tr>
+            <tr>
+              <th>순위</th><th>상품명</th><th>판매건수</th><th>판매비중</th><th>총매출</th><th>매출비중</th><th>평균판매가</th><th>총횟수</th><th>회당가격</th>
+            </tr>
           </thead>
-          <tbody>${rows}</tbody>
+          <tbody>${rows || `<tr><td colspan="9" class="center" style="padding:18px;color:var(--muted);">등록된 횟수권 상품이 없습니다.</td></tr>`}</tbody>
         </table>
       </div>
     </div>
