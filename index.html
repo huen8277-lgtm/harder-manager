@@ -1300,9 +1300,10 @@ function selectedCoach(){
   return selectedCoachList()[0] || '';
 }
 function updateSelectedCoachChart(value){
-  const current = new Set(selectedCoachList());
-  if (current.has(value)) current.delete(value); else current.add(value);
-  state.selectedCoachChart = [...current];
+  const current = selectedCoachList();
+  // 담당 강사 체크박스는 항상 1개만 선택되도록 단일 선택으로 동작합니다.
+  // 기존 선택과 동일한 항목을 다시 클릭하면 선택을 해제하지 않고 그대로 유지합니다.
+  state.selectedCoachChart = current.includes(value) ? [value] : [value];
   scheduleRecalc(true);
 }
 
@@ -1626,10 +1627,12 @@ function renderCharts(){
     renderAmountStatsAndTable(t.prefix, months, y);
   });
 
-  const selected = selectedCoachList();
+  const selected = selectedCoachList().slice(0,1);
+  // 상태도 1개 선택으로 정규화합니다.
+  state.selectedCoachChart = selected;
   renderCoachToggles('overview');
   renderCoachToggles('monthly');
-  const coachColors = ['#7c3aed','#0f766e','#dc2626','#b45309','#2563eb','#db2777','#059669','#9333ea'];
+  const coachColors = ['#7c3aed'];
   const coachSeries = selected.map((coach, idx) => ({
     key:`coachRevenue_${idx}`,
     label:`${coach} 매출`,
@@ -1675,16 +1678,20 @@ function renderCoachToggles(source){
 function renderCoachStatsAndTable(source, selected, labels, y){
   const statsEl = document.getElementById(`${source}CoachStats`);
   const tableEl = document.getElementById(`${source}CoachTable`);
-  const totals = selected.map(coach => ({coach, data:coachMonthlySeries(y, coach)}));
+  const totals = selected.slice(0,1).map(coach => ({coach, data:coachMonthlySeries(y, coach)}));
   if (statsEl){
     statsEl.innerHTML = totals.length ? totals.map(x => {
-      const total = x.data.reduce((a,b)=>a+b,0);
-      const avg = x.data.length ? total / x.data.length : 0;
+      const revenueMonths = x.data.filter(v => Number(v) > 0);
+      const total = revenueMonths.reduce((a,b)=>a+b,0);
+      // 매출이 실제로 발생한 월만 대상으로 월평균을 계산합니다.
+      const avg = revenueMonths.length ? total / revenueMonths.length : 0;
       return `<div class="chart-stat"><span>${escapeHtml(x.coach)} 월평균</span><strong>${fmtNumber(avg)}원</strong></div>`;
     }).join('') : '<div class="small">강사를 선택하세요.</div>';
   }
   if (tableEl){
-    tableEl.innerHTML = `<table><thead><tr><th>월</th>${selected.map(c=>`<th>${escapeHtml(c)} 매출</th>`).join('')}</tr></thead><tbody>${labels.map((lab,i)=>`<tr><th>${escapeHtml(lab)}</th>${totals.map(x=>`<td class="currency">${plainNumberHtml(x.data[i])}</td>`).join('')}</tr>`).join('')}</tbody></table>`;
+    tableEl.innerHTML = totals.length
+      ? `<table><thead><tr><th>월</th><th>${escapeHtml(totals[0].coach)} 매출</th></tr></thead><tbody>${labels.map((lab,i)=>`<tr><th>${escapeHtml(lab)}</th><td class="currency">${plainNumberHtml(totals[0].data[i])}</td></tr>`).join('')}</tbody></table>`
+      : '<div class="small" style="padding:12px;">강사를 선택하세요.</div>';
   }
 }
 function renderSummaryCharts(source='overview'){
