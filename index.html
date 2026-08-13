@@ -491,6 +491,86 @@
   .sort-indicator{font-size:10px;color:#64748b;margin-left:4px;}
   .member-sort-note{margin-left:8px;}
   @media (max-width:900px){.member-summary-strip{grid-template-columns:repeat(2,minmax(0,1fr));}}
+
+
+  /* Claude-inspired visual theme */
+  :root{
+    --bg:#f5f1eb;
+    --panel:#fffdf9;
+    --line:#e3dbd1;
+    --line2:#eee7df;
+    --text:#3b342e;
+    --muted:#7b7066;
+    --primary:#d97757;
+    --primary-soft:#f6e7df;
+    --success:#5f7f68;
+    --warning:#b17a4f;
+    --danger:#b45b52;
+    --shadow:0 8px 24px rgba(83,68,55,.06);
+    --radius:16px;
+    --radius-sm:10px;
+  }
+  html,body{background:var(--bg);color:var(--text)}
+  body{
+    font-family:Inter, Pretendard, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Noto Sans KR", sans-serif;
+    background:linear-gradient(180deg,#f8f5f0 0%,#f2eee8 100%);
+  }
+  .app{max-width:1580px;padding:28px}
+  .sticky-top{
+    background:rgba(248,245,240,.92);
+    border-bottom:1px solid rgba(227,219,209,.75);
+    padding:16px 28px 14px;
+    margin:0 -28px 14px;
+  }
+  .brand h1{font-family:Georgia,"Times New Roman",serif;font-weight:600;letter-spacing:-.02em;color:#3d342e}
+  .brand p,.section-title .note,.legend-note,.small{color:var(--muted)}
+  .pill{background:var(--primary-soft);color:#a65336;border-color:#efcabc}
+  .control,.card,.subcard,.chart-card,.kpi{
+    background:var(--panel);
+    border-color:var(--line);
+    box-shadow:var(--shadow);
+  }
+  .control input,.control select,.control textarea,
+  td.input-cell input,td.input-cell select,td.input-cell textarea{
+    background:#fffefa;
+    border-color:#ded4c9;
+    color:var(--text);
+  }
+  .control input:focus,.control select:focus,.control textarea:focus{
+    border-color:#e3a38d;
+    box-shadow:0 0 0 3px rgba(217,119,87,.12)
+  }
+  .btn{background:#fffdf9;border-color:#ddd3c8;color:var(--text)}
+  .btn.primary{background:var(--primary);border-color:var(--primary);color:#fffaf7}
+  .tab{background:#fffdf9;border-color:#ddd3c8;color:#5c5047}
+  .tab.active{background:var(--primary);border-color:var(--primary);color:#fffaf7}
+  .section-title{border-bottom-color:var(--line2)}
+  .table-wrap{border-color:var(--line);background:#fffdf9}
+  thead th{background:#f8f4ee;border-bottom-color:var(--line)}
+  tbody tr:hover td{background:#fcf8f3}
+  td.computed{background:#f8f5f0;color:#40372f}
+  .chart-wrap{background:#fffdf9;border-color:var(--line2)}
+  .chart-stat,.member-summary-strip>div{background:#f8f4ee;border-color:var(--line2)}
+  .muted-box{background:#faf6f1;border-color:#eadfd4;color:#6d6057}
+  .series-toggle{background:#fffdf9;border-color:#ddd3c8;color:#5c5047}
+  .series-toggle:hover{border-color:#d8a08b;background:#fcf4ef}
+  .series-toggle input{accent-color:var(--primary)}
+  .tag.success{background:#eef4ef;color:#54705b;border-color:#cfe0d2}
+  .tag.warning{background:#faf1e7;color:#9a6943;border-color:#ead5bf}
+  .tag.danger{background:#fbefed;color:#a45b54;border-color:#eac9c4}
+  .tag.neutral{background:#f5f1eb;color:#665b52;border-color:#ddd3c8}
+  .status-badge.s-이용중{background:#eef4ef;color:#54705b}
+  .status-badge.s-예정{background:#f1f3f7;color:#5f6b7b}
+  .status-badge.s-만료{background:#faf1e7;color:#9a6943}
+  .status-badge.s-소진{background:#fbefed;color:#a45b54}
+  .status-badge.s-재등록필요{background:#f8eee6;color:#9d6848}
+  .status-badge.s-입력전{background:#f1eee9;color:#756c64}
+  .kpi .label{color:#8a7d72}
+  .positive,.signed-positive{color:#b85b49}
+  .negative,.signed-negative{color:#64748b}
+  .topbar .actions{color:var(--text)}
+  @media (max-width:700px){.app{padding:18px}.sticky-top{padding-left:18px;padding-right:18px;margin-left:-18px;margin-right:-18px}}
+
 </style>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
@@ -1576,7 +1656,7 @@ function drawChart(canvas, series, labels, kind){
   ctx.setTransform(dpr,0,0,dpr,0,0);
   const w = rect.width, h = rect.height;
   ctx.clearRect(0,0,w,h);
-  ctx.fillStyle = '#ffffff';
+  ctx.fillStyle = '#fffdf9';
   ctx.fillRect(0,0,w,h);
   const pad = {l:48,r:18,t:18,b:34};
   const plotW = w - pad.l - pad.r;
@@ -1600,19 +1680,19 @@ function drawChart(canvas, series, labels, kind){
   const range = max - min;
   const zeroY = pad.t + plotH - ((0 - min) / range) * plotH;
   // grid
-  ctx.strokeStyle = '#e5e7eb';
+  ctx.strokeStyle = '#ebe3da';
   ctx.lineWidth = 1;
   for (let i=0;i<5;i++){
     const y = pad.t + (plotH * i / 4);
     ctx.beginPath(); ctx.moveTo(pad.l, y); ctx.lineTo(w-pad.r, y); ctx.stroke();
     const val = max - (range * i / 4);
-    ctx.fillStyle = '#6b7280'; ctx.font = '11px sans-serif';
+    ctx.fillStyle = '#8a7d72'; ctx.font = '11px sans-serif';
     ctx.textAlign = 'right'; ctx.textBaseline = 'middle';
     ctx.fillText(kind === 'margin' ? `${val.toFixed(1)}%` : fmtNumber(val), pad.l - 8, y);
   }
   // zero line
   if (min < 0 && max > 0){
-    ctx.strokeStyle = '#cbd5e1';
+    ctx.strokeStyle = '#d9cec3';
     ctx.beginPath(); ctx.moveTo(pad.l, zeroY); ctx.lineTo(w-pad.r, zeroY); ctx.stroke();
   }
   // x labels
