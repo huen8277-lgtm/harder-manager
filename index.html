@@ -1503,9 +1503,11 @@ function updateMember(idx, field, value){
     if (priceRow) row.total = Number(priceRow.total) || '';
   }
   // 시작일/상품 변경 시 종료일을 즉시 다시 계산해 화면에 반영한다.
-  if (field === 'start' || field === 'product') {
-    row.end = memberValidityEnd(row);
+  if (field === 'start' || field === 'product' || field === 'coach') {
+    if (field === 'start' || field === 'product') row.end = memberValidityEnd(row);
     ensureMemberGroups();
+    // 회원등록의 담당강사가 변경되면
+    // 수입기록 > 회원권 자동 연동의 담당자와 담당 강사별 그래프를 즉시 다시 계산합니다.
     scheduleRecalc(true);
     return;
   }
@@ -1544,6 +1546,8 @@ function updateManualIncome(idx, field, value){
   if (!row) return;
   row[field] = (field === 'amount') ? parseNumericInput(value) : value;
   markInputDirty();
+  // 수입기록의 담당자/금액/일자를 변경하면 강사별 매출 그래프도 즉시 갱신
+  if (field === 'coach' || field === 'amount' || field === 'date') scheduleRecalc(true);
 }
 function addRow(kind){
   if (kind === 'member'){
@@ -1557,7 +1561,7 @@ function addRow(kind){
     const idx = state.expenses.length - 1;
     pendingFocus = { oninput: `updateExpense(${idx}, 'date', this.value)`, selectionStart: 0, selectionEnd: 0 };
   } else if (kind === 'manualIncome'){
-    state.manualIncomes.push({date:'',item:'',amount:'',method:state.paymentMethods[0]||'',coach:'',type:state.incomeTypes[0]||'기타',note:''});
+    state.manualIncomes.push({date:'',item:'',amount:'',method:state.paymentMethods[0]||'',coach:state.instructorOptions[0]||selectedCoach()||'',type:state.incomeTypes[0]||'기타',note:''});
     const idx = state.manualIncomes.length - 1;
     pendingFocus = { oninput: `updateManualIncome(${idx}, 'date', this.value)`, selectionStart: 0, selectionEnd: 0 };
   } else if (kind === 'price'){
@@ -1746,10 +1750,14 @@ function drawChart(canvas, series, labels, kind){
   });
 }
 function coachMonthlySeries(year, coach){
+  // 담당 강사별 매출의 회원권 부분은 수입기록 > 회원권 자동 연동과 동일한 데이터(memberIncomeRows)를 사용합니다.
+  // 따라서 회원등록의 담당강사/시작일/상품이 바뀌면 자동 연동 수입과 그래프가 같은 기준으로 갱신됩니다.
   return Array.from({length:12}, (_, monthIndex) => {
     const range = monthRange(year, monthIndex);
-    const memberRevenue = memberIncomeRows().reduce((sum, r) => sum + (r.coach === coach && inRange(r.date, range.start, range.end) ? (Number(r.received) || 0) : 0), 0);
-    const manualRevenue = extraIncomeRows().reduce((sum, r) => sum + (r.coach === coach && inRange(r.date, range.start, range.end) ? (Number(r.amount) || 0) : 0), 0);
+    const memberRevenue = memberIncomeRows().reduce((sum, r) =>
+      sum + (r.coach === coach && inRange(r.date, range.start, range.end) ? (Number(r.received) || 0) : 0), 0);
+    const manualRevenue = extraIncomeRows().reduce((sum, r) =>
+      sum + (r.coach === coach && inRange(r.date, range.start, range.end) ? (Number(r.amount) || 0) : 0), 0);
     return memberRevenue + manualRevenue;
   });
 }
@@ -2162,6 +2170,38 @@ function renderMembers(){
       <div class="small" style="margin-top:10px;">※ 재등록은 신규 회원과 같은 그룹으로 묶여 정렬되며, 그룹 정렬값은 가장 최근 등록(재등록 포함) 정보를 우선 사용합니다.</div>
     </div>`;
 }
+function coachIncomeSummaryRows(year){
+  const coaches = coachChartOptions();
+  return coaches.map(coach => {
+    const data = coachMonthlySeries(year, coach);
+    const total = data.reduce((a,b)=>a+(Number(b)||0),0);
+    const active = data.filter(v => Number(v) > 0);
+    const avg = active.length ? total / active.length : 0;
+    return {coach, total, avg};
+  });
+}
+
+function renderCoachIncomeSummary(){
+  const y = Number(state.year) || new Date().getFullYear();
+  const rows = coachIncomeSummaryRows(y);
+  if (!rows.length) return '';
+  return `
+    <div class="subcard" style="margin-bottom:14px;">
+      <div class="section-title" style="margin-bottom:8px;">
+        <div>
+          <h3>담당 강사별 수입 확인</h3>
+          <div class="small">회원권 자동연동 수입과 직접 입력 수입을 담당자 기준으로 합산합니다. 여기의 값과 홈/월간요약 그래프가 동일하게 연동됩니다.</div>
+        </div>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>담당 강사</th><th>연간 매출</th><th>매출 발생월 평균</th></tr></thead>
+          <tbody>${rows.map(r => `<tr><td><strong>${escapeHtml(r.coach)}</strong></td><td class="currency">${plainNumberHtml(r.total)}</td><td class="currency">${plainNumberHtml(r.avg)}</td></tr>`).join('')}</tbody>
+        </table>
+      </div>
+    </div>`;
+}
+
 function renderIncome(){
 
   const linked = memberIncomeRows().map((r, idx) => `
@@ -2199,6 +2239,7 @@ function renderIncome(){
           <div class="note">회원권 매출은 회원등록에서 자동 연동되고, 개별 수입은 아래에서 직접 입력합니다.</div>
         </div>
       </div>
+      ${renderCoachIncomeSummary()}
       <div class="subcard" style="margin-bottom:14px;">
         <h3>회원권 자동 연동</h3>
         <div class="table-wrap">
