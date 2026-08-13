@@ -629,7 +629,7 @@
 </div>
 
 <script>
-const initialState = {"year": 2026, "priceTable": [{"product": "10회권", "total": 10, "price": 300000, "unit": 30000, "days": 90, "refund": "규정에 따라", "note": "예시"}, {"product": "20회권", "total": 20, "price": 560000, "unit": 28000, "days": 150, "refund": "규정에 따라", "note": "예시"}, {"product": "30회권", "total": 30, "price": 780000, "unit": 26000, "days": 210, "refund": "규정에 따라", "note": "예시"}], "paymentMethods": ["현금", "계좌이체", "카드", "간편결제", "기타"], "expenseCategories": ["임대료", "관리비", "인건비", "광고비", "소모품비", "수선비", "전기/수도/가스", "세금/수수료", "기타"], "incomeTypes": ["회원권", "개인레슨", "이벤트", "환불", "기타"], "members": [{"name": "김하늘", "phone": "010-1000-0001", "start": "2026-01-05", "end": "2026-04-04", "product": "10회권", "total": 10, "used": 10, "coach": "강사A", "regType": "신규"}], "expenses": [{"date": "2026-01-01", "category": "임대료", "item": "임대료", "amount": 1100000, "method": "계좌이체", "note": "월세"}], "manualIncomes": [{"date": "2026-01-15", "item": "개인레슨", "amount": 50000, "method": "현금", "coach": "강사A", "type": "개인레슨", "note": "예시"}], "instructorOptions": ["박예린", "강사A", "강사B", "강사C"], "memberTypes": ["신규", "재등록"], "selectedCoachChart": ["박예린"], "memberFilters": {"coach": "전체", "status": "전체", "product": "전체", "regType": "전체"}, "memberSort": {"key": "id", "dir": "asc"}};
+const initialState = {"year": 2026, "priceTable": [{"product": "10회권", "total": 10, "price": 300000, "unit": 30000, "days": 90, "refund": "규정에 따라", "note": "예시"}, {"product": "20회권", "total": 20, "price": 560000, "unit": 28000, "days": 150, "refund": "규정에 따라", "note": "예시"}, {"product": "30회권", "total": 30, "price": 780000, "unit": 26000, "days": 210, "refund": "규정에 따라", "note": "예시"}], "paymentMethods": ["현금", "계좌이체", "카드", "간편결제", "기타"], "expenseCategories": ["임대료", "관리비", "인건비", "광고비", "소모품비", "수선비", "전기/수도/가스", "세금/수수료", "기타"], "incomeTypes": ["회원권", "개인레슨", "이벤트", "환불", "기타"], "members": [{"name": "김하늘", "phone": "010-1000-0001", "start": "2026-01-05", "end": "2026-04-04", "product": "10회권", "total": 10, "used": 3, "coach": "박예린", "regType": "신규"}], "expenses": [{"date": "2026-01-01", "category": "임대료", "item": "임대료", "amount": 1100000, "method": "계좌이체", "note": "월세"}], "manualIncomes": [{"date": "2026-01-15", "item": "개인레슨", "amount": 800000, "method": "현금", "coach": "박예린", "type": "개인레슨", "note": "예시 데이터"}, {"date": "2026-02-10", "item": "개인레슨", "amount": 1200000, "method": "계좌이체", "coach": "박예린", "type": "개인레슨", "note": "예시 데이터"}, {"date": "2026-03-12", "item": "개인레슨", "amount": 600000, "method": "카드", "coach": "박예린", "type": "개인레슨", "note": "예시 데이터"}, {"date": "2026-04-08", "item": "개인레슨", "amount": 1500000, "method": "카드", "coach": "박예린", "type": "개인레슨", "note": "예시 데이터"}, {"date": "2026-01-20", "item": "개인레슨", "amount": 300000, "method": "계좌이체", "coach": "최보배", "type": "개인레슨", "note": "예시 데이터"}, {"date": "2026-02-18", "item": "개인레슨", "amount": 900000, "method": "카드", "coach": "최보배", "type": "개인레슨", "note": "예시 데이터"}, {"date": "2026-03-22", "item": "개인레슨", "amount": 1700000, "method": "카드", "coach": "최보배", "type": "개인레슨", "note": "예시 데이터"}, {"date": "2026-05-05", "item": "개인레슨", "amount": 1100000, "method": "현금", "coach": "최보배", "type": "개인레슨", "note": "예시 데이터"}], "instructorOptions": ["박예린", "최보배"], "memberTypes": ["신규", "재등록"], "selectedCoachChart": ["박예린"], "memberFilters": {"coach": "전체", "status": "전체", "product": "전체", "regType": "전체"}, "memberSort": {"key": "id", "dir": "asc"}};
 
 const STORAGE_KEY = 'hader_center_management_state_v1';
 
@@ -1371,14 +1371,11 @@ function selectedCoachList(){
   const options = coachChartOptions();
   if (!options.length) {
     activeCoachChartSelection = '';
-    state.selectedCoachChart = [];
     return [];
   }
   if (!activeCoachChartSelection || !options.includes(activeCoachChartSelection)) {
-    const saved = Array.isArray(state.selectedCoachChart) ? state.selectedCoachChart[0] : state.selectedCoachChart;
-    activeCoachChartSelection = options.includes(saved) ? saved : options[0];
+    activeCoachChartSelection = options[0];
   }
-  state.selectedCoachChart = [activeCoachChartSelection];
   return [activeCoachChartSelection];
 }
 function selectedCoach(){
@@ -1389,7 +1386,6 @@ function updateCoachChartView(forcedCoach=''){
   const coach = forcedCoach && options.includes(forcedCoach) ? forcedCoach : selectedCoach();
   if (!coach) return;
   activeCoachChartSelection = coach;
-  state.selectedCoachChart = [coach];
 
   const y = Number(state.year) || new Date().getFullYear();
   const labels = Array.from({length:12}, (_,i) => monthLabel(y,i));
@@ -1416,16 +1412,15 @@ function updateSelectedCoachChart(value){
   const options = coachChartOptions();
   if (!options.includes(value)) return;
 
-  // 현재 화면에서 마지막으로 클릭한 강사를 유일한 기준값으로 유지합니다.
-  activeCoachChartSelection = String(value);
-  state.selectedCoachChart = [activeCoachChartSelection];
+  // 담당 강사 그래프는 화면 전용 단일 선택 상태만 사용합니다.
+  activeCoachChartSelection = value;
 
-  // 두 화면 모두 클릭 직후 동일한 강사 데이터로 갱신합니다.
-  updateCoachChartView(activeCoachChartSelection);
+  // 클릭한 순간 홈/월간요약의 그래프, 월평균, 월별 표를 모두 같은 강사 기준으로 다시 그립니다.
+  renderCharts();
 
-  // 다시 렌더링되지 않아도 체크 상태를 즉시 동기화합니다.
-  document.querySelectorAll('.coach-chart-choice').forEach(input => {
-    input.checked = input.dataset.coach === activeCoachChartSelection;
+  // radio UI도 즉시 동기화합니다.
+  document.querySelectorAll('.coach-toggles input[data-coach]').forEach(input => {
+    input.checked = input.getAttribute('data-coach') === value;
   });
 }
 
@@ -1760,7 +1755,7 @@ function renderCharts(){
 
   renderCoachToggles('overview');
   renderCoachToggles('monthly');
-  const coach = activeCoachChartSelection && coachChartOptions().includes(activeCoachChartSelection) ? activeCoachChartSelection : selectedCoach();
+  const coach = selectedCoach();
   if (coach) updateCoachChartView(coach);
 }
 function renderAmountStatsAndTable(prefix, months, y){
@@ -1798,11 +1793,11 @@ function renderAmountStatsAndTable(prefix, months, y){
 function renderCoachToggles(source){
   const el = document.getElementById(`${source}CoachToggles`);
   if (!el) return;
-  const selectedCoachValue = activeCoachChartSelection || selectedCoach();
+  const selectedCoachValue = selectedCoach();
   const options = coachChartOptions();
   const groupName = `coach-select-${source}`;
   el.innerHTML = options.map(coach => `
-    <label class="series-toggle"><input type="radio" name="${groupName}" class="coach-chart-choice" data-coach="${escapeHtml(coach)}" value="${escapeHtml(coach)}" ${coach === selectedCoachValue ? 'checked' : ''} onclick="event.stopPropagation(); updateSelectedCoachChart(${JSON.stringify(coach)})">${escapeHtml(coach)}</label>
+    <label class="series-toggle"><input type="radio" name="${groupName}" data-coach="${escapeHtml(coach)}" value="${escapeHtml(coach)}" ${coach === selectedCoachValue ? 'checked' : ''} onchange="updateSelectedCoachChart(${JSON.stringify(coach)})">${escapeHtml(coach)}</label>
   `).join('');
 }
 
@@ -2428,10 +2423,8 @@ function recalc(){
   syncMemberValidityAll();
   const coachList = coachChartOptions();
   if (!activeCoachChartSelection || !coachList.includes(activeCoachChartSelection)) {
-    const saved = Array.isArray(state.selectedCoachChart) ? state.selectedCoachChart[0] : state.selectedCoachChart;
-    activeCoachChartSelection = coachList.includes(saved) ? saved : (coachList[0] || '');
+    activeCoachChartSelection = coachList[0] || '';
   }
-  state.selectedCoachChart = activeCoachChartSelection ? [activeCoachChartSelection] : [];
   document.getElementById('yearInput').value = state.year;
   document.getElementById('todayInfo').value = fmtDate(todayDate());
   document.getElementById('kpiRow').innerHTML = renderKpis();
