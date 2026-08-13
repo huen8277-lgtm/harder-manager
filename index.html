@@ -1394,7 +1394,10 @@ function updateCoachChartView(forcedCoach=''){
   const y = Number(state.year) || new Date().getFullYear();
   const labels = Array.from({length:12}, (_,i) => monthLabel(y,i));
   const data = coachMonthlySeries(y, coach);
-  const coachSeries = [{ key:'coachRevenue', label:`${coach} 매출`, color:'#7c3aed', enabled:true, data }];
+  const hasRevenue = data.some(v => Number(v) > 0);
+  // 선택한 강사의 매출 데이터가 전혀 없으면 그래프에는 선/점 없이 빈 그래프를 표시합니다.
+  // 단, 아래 월평균 및 월별 표는 선택 강사 기준으로 0원을 표시합니다.
+  const coachSeries = hasRevenue ? [{ key:'coachRevenue', label:`${coach} 매출`, color:'#7c3aed', enabled:true, data }] : [];
 
   const overviewCanvas = document.getElementById('overviewCoachChart');
   const monthlyCanvas = document.getElementById('monthlyCoachChart');
@@ -1492,6 +1495,13 @@ function updateMember(idx, field, value){
   if (field === 'product') {
     const priceRow = getPrice(value);
     if (priceRow) row.total = Number(priceRow.total) || '';
+  }
+  // 시작일/상품 변경 시 종료일을 즉시 다시 계산해 화면에 반영한다.
+  if (field === 'start' || field === 'product') {
+    row.end = memberValidityEnd(row);
+    ensureMemberGroups();
+    scheduleRecalc(true);
+    return;
   }
   ensureMemberGroups();
   markInputDirty();
