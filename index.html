@@ -899,7 +899,6 @@ if (!state.memberSort || typeof state.memberSort !== 'object') state.memberSort 
 if (!state.memberSortInitializedV2) { state.memberSort = {key:'id', dir:'asc'}; state.memberSortInitializedV2 = true; }
 if (!Array.isArray(state.selectedCoachChart)) state.selectedCoachChart = state.selectedCoachChart ? [state.selectedCoachChart] : [];
 if (!Array.isArray(state.instructorOptions)) state.instructorOptions = [];
-if (!state.instructorOptions.includes('박예린')) state.instructorOptions.unshift('박예린');
 let memberGroupSeq = 0;
 function makeMemberGroupId(){
   memberGroupSeq += 1;
@@ -1365,7 +1364,8 @@ function coachRevenueByMonth(year, coach){
   });
 }
 function coachChartOptions(){
-  return coachOptions();
+  // 담당 강사 그래프의 선택 항목은 반드시 코드값 > 담당강사 기준값만 사용합니다.
+  return [...new Set((state.instructorOptions || []).map(v => (v || '').trim()).filter(Boolean))];
 }
 function selectedCoachList(){
   const options = coachChartOptions();
@@ -1376,7 +1376,7 @@ function selectedCoachList(){
   }
   if (!activeCoachChartSelection || !options.includes(activeCoachChartSelection)) {
     const saved = Array.isArray(state.selectedCoachChart) ? state.selectedCoachChart[0] : state.selectedCoachChart;
-    activeCoachChartSelection = options.includes(saved) ? saved : (options.includes('박예린') ? '박예린' : options[0]);
+    activeCoachChartSelection = options.includes(saved) ? saved : options[0];
   }
   state.selectedCoachChart = [activeCoachChartSelection];
   return [activeCoachChartSelection];
@@ -1412,9 +1412,19 @@ function updateCoachChartView(forcedCoach=''){
 function updateSelectedCoachChart(value){
   const options = coachChartOptions();
   if (!options.includes(value)) return;
+
+  // 화면에서 클릭한 강사를 단 하나의 현재 선택값으로 확정합니다.
   activeCoachChartSelection = value;
   state.selectedCoachChart = [value];
+
+  // 홈/월간 요약의 두 담당 강사 그래프를 동일한 강사 기준으로 즉시 갱신합니다.
   updateCoachChartView(value);
+
+  // 재렌더링으로 이전 체크 상태가 남지 않도록 두 영역의 radio 상태를 즉시 동기화합니다.
+  document.querySelectorAll('.coach-toggles input[data-coach]').forEach(input => {
+    input.checked = input.getAttribute('data-coach') === value;
+  });
+
   saveState();
 }
 
@@ -1740,9 +1750,9 @@ function renderCharts(){
     renderAmountStatsAndTable(t.prefix, months, y);
   });
 
-  const coach = selectedCoach();
   renderCoachToggles('overview');
   renderCoachToggles('monthly');
+  const coach = selectedCoach();
   if (coach) updateCoachChartView(coach);
 }
 function renderAmountStatsAndTable(prefix, months, y){
@@ -1782,8 +1792,9 @@ function renderCoachToggles(source){
   if (!el) return;
   const selectedCoachValue = selectedCoach();
   const options = coachChartOptions();
+  const groupName = `coach-select-${source}`;
   el.innerHTML = options.map(coach => `
-    <label class="series-toggle"><input type="radio" name="${source}CoachChartToggle" data-coach="${escapeHtml(coach)}" value="${escapeHtml(coach)}" ${coach === selectedCoachValue ? 'checked' : ''} onchange="updateSelectedCoachChart(${JSON.stringify(coach)})">${escapeHtml(coach)}</label>
+    <label class="series-toggle"><input type="radio" name="${groupName}" data-coach="${escapeHtml(coach)}" value="${escapeHtml(coach)}" ${coach === selectedCoachValue ? 'checked' : ''} onchange="updateSelectedCoachChart(${JSON.stringify(coach)})">${escapeHtml(coach)}</label>
   `).join('');
 }
 
@@ -2410,7 +2421,7 @@ function recalc(){
   const coachList = coachChartOptions();
   if (!activeCoachChartSelection || !coachList.includes(activeCoachChartSelection)) {
     const saved = Array.isArray(state.selectedCoachChart) ? state.selectedCoachChart[0] : state.selectedCoachChart;
-    activeCoachChartSelection = coachList.includes(saved) ? saved : (coachList.includes('박예린') ? '박예린' : (coachList[0] || ''));
+    activeCoachChartSelection = coachList.includes(saved) ? saved : (coachList[0] || '');
   }
   state.selectedCoachChart = activeCoachChartSelection ? [activeCoachChartSelection] : [];
   document.getElementById('yearInput').value = state.year;
