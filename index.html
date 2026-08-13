@@ -894,10 +894,10 @@ async function logoutSupabase(){
 }
 
 let state = loadSavedState();
-let activeCoachChartSelection = '';
 if (!state.memberSort || typeof state.memberSort !== 'object') state.memberSort = {key:'id', dir:'asc'};
 if (!state.memberSortInitializedV2) { state.memberSort = {key:'id', dir:'asc'}; state.memberSortInitializedV2 = true; }
 if (!Array.isArray(state.selectedCoachChart)) state.selectedCoachChart = state.selectedCoachChart ? [state.selectedCoachChart] : [];
+if (state.selectedCoachChart.length > 1) state.selectedCoachChart = [state.selectedCoachChart[0]];
 if (!Array.isArray(state.instructorOptions)) state.instructorOptions = [];
 let memberGroupSeq = 0;
 function makeMemberGroupId(){
@@ -1370,13 +1370,18 @@ function coachChartOptions(){
 function selectedCoachList(){
   const options = coachChartOptions();
   if (!options.length) {
-    activeCoachChartSelection = '';
+    state.selectedCoachChart = [];
     return [];
   }
-  if (!activeCoachChartSelection || !options.includes(activeCoachChartSelection)) {
-    activeCoachChartSelection = options[0];
+  const current = Array.isArray(state.selectedCoachChart)
+    ? String(state.selectedCoachChart[0] || '').trim()
+    : String(state.selectedCoachChart || '').trim();
+  if (!current || !options.includes(current)) {
+    state.selectedCoachChart = [options[0]];
+  } else {
+    state.selectedCoachChart = [current];
   }
-  return [activeCoachChartSelection];
+  return [state.selectedCoachChart[0]];
 }
 function selectedCoach(){
   return selectedCoachList()[0] || '';
@@ -1385,15 +1390,14 @@ function updateCoachChartView(forcedCoach=''){
   const options = coachChartOptions();
   const coach = forcedCoach && options.includes(forcedCoach) ? forcedCoach : selectedCoach();
   if (!coach) return;
-  activeCoachChartSelection = coach;
+  state.selectedCoachChart = [coach];
 
   const y = Number(state.year) || new Date().getFullYear();
   const labels = Array.from({length:12}, (_,i) => monthLabel(y,i));
-  const data = coachMonthlySeries(y, coach);
-  const hasRevenue = data.some(v => Number(v) > 0);
-  // 선택한 강사의 매출 데이터가 전혀 없으면 그래프에는 선/점 없이 빈 그래프를 표시합니다.
-  // 단, 아래 월평균 및 월별 표는 선택 강사 기준으로 0원을 표시합니다.
-  const coachSeries = hasRevenue ? [{ key:'coachRevenue', label:`${coach} 매출`, color:'#7c3aed', enabled:true, data }] : [];
+  const data = coachMonthlySeries(y, coach).map(v => Number(v) || 0);
+  // 매출이 0원인 달도 포함해서 항상 12개월 시리즈를 만듭니다.
+  // 그래프는 데이터가 모두 0이어도 축과 0선이 표시되어 '그래프가 사라진 것처럼' 보이지 않게 합니다.
+  const coachSeries = [{ key:'coachRevenue', label:`${coach} 매출`, color:'#7c3aed', enabled:true, data }];
 
   const overviewCanvas = document.getElementById('overviewCoachChart');
   const monthlyCanvas = document.getElementById('monthlyCoachChart');
@@ -1403,8 +1407,12 @@ function updateCoachChartView(forcedCoach=''){
   renderCoachStatsAndTable('overview', [coach], labels, y);
   renderCoachStatsAndTable('monthly', [coach], labels, y);
 
-  document.querySelectorAll('.coach-toggles input[data-coach]').forEach(input => {
-    input.checked = input.getAttribute('data-coach') === coach;
+  ['overviewCoachToggles','monthlyCoachToggles'].forEach(id => {
+    const root = document.getElementById(id);
+    if (!root) return;
+    root.querySelectorAll('input[data-coach]').forEach(input => {
+      input.checked = input.getAttribute('data-coach') === coach;
+    });
   });
 }
 
@@ -1412,15 +1420,20 @@ function updateSelectedCoachChart(value){
   const options = coachChartOptions();
   if (!options.includes(value)) return;
 
-  // 담당 강사 그래프는 화면 전용 단일 선택 상태만 사용합니다.
-  activeCoachChartSelection = value;
+  // 담당 강사 그래프의 선택 상태를 state에 영구적으로 보관합니다.
+  state.selectedCoachChart = [value];
+  saveState();
 
   // 클릭한 순간 홈/월간요약의 그래프, 월평균, 월별 표를 모두 같은 강사 기준으로 다시 그립니다.
   renderCharts();
 
-  // radio UI도 즉시 동기화합니다.
-  document.querySelectorAll('.coach-toggles input[data-coach]').forEach(input => {
-    input.checked = input.getAttribute('data-coach') === value;
+  // 두 화면의 radio UI도 즉시 동기화합니다.
+  ['overviewCoachToggles','monthlyCoachToggles'].forEach(id => {
+    const root = document.getElementById(id);
+    if (!root) return;
+    root.querySelectorAll('input[data-coach]').forEach(input => {
+      input.checked = input.getAttribute('data-coach') === value;
+    });
   });
 }
 
@@ -1663,11 +1676,16 @@ function drawChart(canvas, series, labels, kind){
   if (!canvas) return;
   const dpr = window.devicePixelRatio || 1;
   const rect = canvas.getBoundingClientRect();
-  canvas.width = Math.max(1, Math.floor(rect.width * dpr));
-  canvas.height = Math.max(1, Math.floor(rect.height * dpr));
+  // 숨겨진 탭에서 캔버스 폭이 0으로 측정되는 경우가 있어 부모 폭/고정 높이로 보정합니다.
+  const w = rect.width > 10 ? rect.width : Math.max(320, canvas.parentElement?.clientWidth || 800);
+  const h = rect.height > 10 ? rect.height : 300;
+  canvas.style.width = `${w}px`;
+  canvas.style.height = `${h}px`;
+  canvas.width = Math.max(1, Math.floor(w * dpr));
+  canvas.height = Math.max(1, Math.floor(h * dpr));
   const ctx = canvas.getContext('2d');
+  if (!ctx) return;
   ctx.setTransform(dpr,0,0,dpr,0,0);
-  const w = rect.width, h = rect.height;
   ctx.clearRect(0,0,w,h);
   ctx.fillStyle = '#fffdf9';
   ctx.fillRect(0,0,w,h);
@@ -2422,9 +2440,12 @@ function recalc(){
   const snapshot = captureUiState();
   syncMemberValidityAll();
   const coachList = coachChartOptions();
-  if (!activeCoachChartSelection || !coachList.includes(activeCoachChartSelection)) {
-    activeCoachChartSelection = coachList[0] || '';
-  }
+  const selected = Array.isArray(state.selectedCoachChart)
+    ? String(state.selectedCoachChart[0] || '').trim()
+    : String(state.selectedCoachChart || '').trim();
+  state.selectedCoachChart = coachList.length
+    ? [coachList.includes(selected) ? selected : coachList[0]]
+    : [];
   document.getElementById('yearInput').value = state.year;
   document.getElementById('todayInfo').value = fmtDate(todayDate());
   document.getElementById('kpiRow').innerHTML = renderKpis();
