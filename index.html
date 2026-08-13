@@ -1416,19 +1416,17 @@ function updateSelectedCoachChart(value){
   const options = coachChartOptions();
   if (!options.includes(value)) return;
 
-  // 화면에서 클릭한 강사를 단 하나의 현재 선택값으로 확정합니다.
-  activeCoachChartSelection = value;
-  state.selectedCoachChart = [value];
+  // 현재 화면에서 마지막으로 클릭한 강사를 유일한 기준값으로 유지합니다.
+  activeCoachChartSelection = String(value);
+  state.selectedCoachChart = [activeCoachChartSelection];
 
-  // 홈/월간 요약의 두 담당 강사 그래프를 동일한 강사 기준으로 즉시 갱신합니다.
-  updateCoachChartView(value);
+  // 두 화면 모두 클릭 직후 동일한 강사 데이터로 갱신합니다.
+  updateCoachChartView(activeCoachChartSelection);
 
-  // 재렌더링으로 이전 체크 상태가 남지 않도록 두 영역의 radio 상태를 즉시 동기화합니다.
-  document.querySelectorAll('.coach-toggles input[data-coach]').forEach(input => {
-    input.checked = input.getAttribute('data-coach') === value;
+  // 다시 렌더링되지 않아도 체크 상태를 즉시 동기화합니다.
+  document.querySelectorAll('.coach-chart-choice').forEach(input => {
+    input.checked = input.dataset.coach === activeCoachChartSelection;
   });
-
-  saveState();
 }
 
 function getMemberFilters(){
@@ -1762,7 +1760,7 @@ function renderCharts(){
 
   renderCoachToggles('overview');
   renderCoachToggles('monthly');
-  const coach = selectedCoach();
+  const coach = activeCoachChartSelection && coachChartOptions().includes(activeCoachChartSelection) ? activeCoachChartSelection : selectedCoach();
   if (coach) updateCoachChartView(coach);
 }
 function renderAmountStatsAndTable(prefix, months, y){
@@ -1800,11 +1798,11 @@ function renderAmountStatsAndTable(prefix, months, y){
 function renderCoachToggles(source){
   const el = document.getElementById(`${source}CoachToggles`);
   if (!el) return;
-  const selectedCoachValue = selectedCoach();
+  const selectedCoachValue = activeCoachChartSelection || selectedCoach();
   const options = coachChartOptions();
   const groupName = `coach-select-${source}`;
   el.innerHTML = options.map(coach => `
-    <label class="series-toggle"><input type="radio" name="${groupName}" data-coach="${escapeHtml(coach)}" value="${escapeHtml(coach)}" ${coach === selectedCoachValue ? 'checked' : ''} onchange="updateSelectedCoachChart(${JSON.stringify(coach)})">${escapeHtml(coach)}</label>
+    <label class="series-toggle"><input type="radio" name="${groupName}" class="coach-chart-choice" data-coach="${escapeHtml(coach)}" value="${escapeHtml(coach)}" ${coach === selectedCoachValue ? 'checked' : ''} onclick="event.stopPropagation(); updateSelectedCoachChart(${JSON.stringify(coach)})">${escapeHtml(coach)}</label>
   `).join('');
 }
 
